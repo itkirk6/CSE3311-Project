@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
-    image: postgis/postgis:15-3.3
+    image: postgres:15-alpine
     container_name: outdoor-spot-db
     environment:
       POSTGRES_DB: outdoor_spot
@@ -13,97 +11,62 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database-schema.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
-      - outdoor-spot-network
-    restart: unless-stopped
+      - outdoor-spot
 
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: outdoor-spot-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - outdoor-spot-network
-    restart: unless-stopped
-    command: redis-server --appendonly yes
 
-  # Backend API
+
+  # Backend (Node.js + Prisma)
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: node:20-alpine
     container_name: outdoor-spot-backend
+    working_dir: /app
     environment:
       NODE_ENV: development
-      DATABASE_URL: postgresql://outdoor_spot_user:outdoor_spot_password@postgres:5432/outdoor_spot
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: your_jwt_secret_here_change_in_production
       PORT: 3001
+      DATABASE_URL: postgresql://outdoor_spot_user:outdoor_spot_password@postgres:5432/outdoor_spot
+      JWT_SECRET: dev_secret_change_me
     ports:
       - "3001:3001"
     volumes:
       - ./backend:/app
-      - /app/node_modules
+      - backend_node_modules:/app/node_modules
     depends_on:
       - postgres
-      - redis
     networks:
-      - outdoor-spot-network
-    restart: unless-stopped
-    command: npm run dev
+      - outdoor-spot
+    command: sh -c "if [ -z \"$(ls -A node_modules 2>/dev/null)\" ]; then npm install; fi && npm run dev"
 
-  # Frontend Next.js App
+
+
+
+  # Frontend (Next.js)
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: node:20-alpine
     container_name: outdoor-spot-frontend
+    working_dir: /app
     environment:
       NODE_ENV: development
-      NEXT_PUBLIC_API_URL: http://localhost:3001
-      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: your_google_maps_api_key
+      NEXT_PUBLIC_API_URL: http://backend:3001
     ports:
       - "3000:3000"
     volumes:
       - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
+      - frontend_node_modules:/app/node_modules
+      - frontend_next:/app/.next
     depends_on:
       - backend
     networks:
-      - outdoor-spot-network
-    restart: unless-stopped
-    command: npm run dev
+      - outdoor-spot
+    command: sh -c "if [ -z \"$(ls -A node_modules 2>/dev/null)\" ]; then npm install; fi && npm run dev"
 
-  # Nginx Reverse Proxy (for production)
-  nginx:
-    image: nginx:alpine
-    container_name: outdoor-spot-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./docker/nginx.conf:/etc/nginx/nginx.conf
-      - ./docker/ssl:/etc/nginx/ssl
-    depends_on:
-      - frontend
-      - backend
-    networks:
-      - outdoor-spot-network
-    restart: unless-stopped
-    profiles:
-      - production
 
 volumes:
   postgres_data:
-    driver: local
-  redis_data:
-    driver: local
+  backend_node_modules:
+  frontend_node_modules:
+  frontend_next:
 
 networks:
-  outdoor-spot-network:
+  outdoor-spot:
     driver: bridge
