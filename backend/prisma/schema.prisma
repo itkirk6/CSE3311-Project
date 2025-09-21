@@ -31,7 +31,6 @@ model User {
   reviews               Review[]
   bookmarks             Bookmark[]
   trips                 Trip[]
-  events                Event[]
   createdEvents         Event[]   @relation("EventOrganizer")
 
   @@map("users")

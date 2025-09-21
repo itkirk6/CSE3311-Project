@@ -18,7 +18,9 @@ services:
 
   # Backend (Node.js + Prisma)
   backend:
-    image: node:20-alpine
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: outdoor-spot-backend
     working_dir: /app
     environment:
@@ -35,7 +37,6 @@ services:
       - postgres
     networks:
       - outdoor-spot
-    command: sh -c "if [ -z \"$(ls -A node_modules 2>/dev/null)\" ]; then npm install; fi && npm run dev"
 
 
 
