@@ -184,29 +184,6 @@ OutdoorSpot is a comprehensive web application that helps outdoor enthusiasts di
 - Open-source approach
 - Extensible architecture
 
-## 🚀 Getting Started
-
-### Quick Setup
-```bash
-# Clone and setup
-git clone <repository-url>
-cd outdoor-spot
-npm run setup
-
-# Start development
-npm run dev
-```
-
-### Docker Setup
-```bash
-# Start all services
-docker-compose up -d
-
-# Access the application
-# Frontend: http://localhost:3000
-# Backend: http://localhost:3001
-```
-
 ## 📈 Success Metrics
 
 ### User Engagement

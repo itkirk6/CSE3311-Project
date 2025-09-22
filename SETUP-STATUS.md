@@ -32,7 +32,7 @@
 ```bash
 # Install Docker Desktop from https://www.docker.com/products/docker-desktop/
 # Then run:
-docker compose up -d postgres redis
+docker compose up -d 
 ```
 
 #### Option 2: Local PostgreSQL
@@ -45,19 +45,6 @@ docker compose up -d postgres redis
 #### Option 3: Cloud Database
 - Sign up at https://supabase.com/ or https://neon.tech/
 - Get connection string and update .env file
-
-### After Database Setup
-```bash
-# Run database migrations
-cd backend
-npm run db:migrate
-
-# Seed with sample data
-npm run db:seed
-
-# Start backend server
-npm run dev
-```
 
 ## 🎯 Current Status
 

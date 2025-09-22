@@ -43,6 +43,8 @@ If you prefer to run everything locally without Docker:
 git clone https://github.com/yourusername/outdoor-spot.git
 cd outdoor-spot
 
+docker-compose up -d
+
 # Install dependencies and setup environment
 npm run setup
 

@@ -151,8 +151,8 @@ outdoor-spot/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/outdoor-spot.git
-   cd outdoor-spot
+   git clone https://github.com/emeryweis/CSE3311-Project.git
+   cd CSE3311-Project
    ```
 
 2. **Set up environment variables**
