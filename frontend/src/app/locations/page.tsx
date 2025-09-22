@@ -48,7 +48,7 @@ export default function LocationsPage() {
       if (activityFilter) queryParams.append('activity', activityFilter);
       if (stateFilter) queryParams.append('state', stateFilter);
 
-      const response = await fetch(`http://localhost:3001/api/search/locations?${queryParams.toString()}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/search/locations?${queryParams.toString()}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

@@ -3,10 +3,8 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: outdoor-spot-db
-    environment:
-      POSTGRES_DB: outdoor_spot
-      POSTGRES_USER: outdoor_spot_user
-      POSTGRES_PASSWORD: outdoor_spot_password
+    env_file:
+      - ./.env
     ports:
       - "5432:5432"
     volumes:
@@ -23,11 +21,10 @@ services:
       dockerfile: Dockerfile
     container_name: outdoor-spot-backend
     working_dir: /app
+    env_file:
+      - ./.env
     environment:
-      NODE_ENV: development
-      PORT: 3001
-      DATABASE_URL: postgresql://outdoor_spot_user:outdoor_spot_password@postgres:5432/outdoor_spot
-      JWT_SECRET: dev_secret_change_me
+      - PORT=${PORT}
     ports:
       - "3001:3001"
     volumes:
@@ -46,9 +43,10 @@ services:
     image: node:20-alpine
     container_name: outdoor-spot-frontend
     working_dir: /app
+    env_file:
+      - ./.env
     environment:
-      NODE_ENV: development
-      NEXT_PUBLIC_API_URL: http://backend:3001
+      - PORT=${FRONTEND_PORT}
     ports:
       - "3000:3000"
     volumes:
@@ -59,7 +57,7 @@ services:
       - backend
     networks:
       - outdoor-spot
-    command: sh -c "if [ -z \"$(ls -A node_modules 2>/dev/null)\" ]; then npm install; fi && npm run dev"
+    command: sh -c "npm install && npm run dev"
 
 
 volumes:

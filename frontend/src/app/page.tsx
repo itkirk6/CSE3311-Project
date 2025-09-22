@@ -39,7 +39,7 @@ export default function Home() {
       
       for (const location of featuredLocations) {
         try {
-          const response = await fetch(`http://localhost:3001/api/search/locations?q=${encodeURIComponent(location)}&limit=1`);
+          const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/search/locations?q=${encodeURIComponent(location)}&limit=1`);
           const data = await response.json();
           if (data.success && data.data.length > 0 && data.data[0].weather) {
             setFeaturedWeather(prev => ({
@@ -71,7 +71,7 @@ export default function Home() {
       if (locationQuery.trim()) params.append('state', locationQuery.trim());
       params.append('limit', '6');
 
-      const response = await fetch(`http://localhost:3001/api/search/locations?${params}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/search/locations?${params}`);
       const data = await response.json();
 
       if (data.success) {
@@ -96,8 +96,8 @@ export default function Home() {
       const params = new URLSearchParams();
       params.append('activity', activity);
       params.append('limit', '6');
-
-      const response = await fetch(`http://localhost:3001/api/search/locations?${params}`);
+      console.log("DEBUG backend url:", process.env.NEXT_PUBLIC_BACKEND_URL);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/search/locations?${params}`);
       const data = await response.json();
 
       if (data.success) {

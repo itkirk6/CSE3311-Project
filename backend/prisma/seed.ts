@@ -89,30 +89,30 @@ async function main() {
     {
       id: 5,
       name: 'Lake Tahoe',
-      description: 'Crystal-clear waters surrounded by majestic mountains, perfect for water activities.',
+      description: 'The largest alpine lake in North America, known for its clarity and surrounding mountains.',
       location: 'California',
-      coordinates: { lat: 39.0968, lng: -120.0324 },
-      activities: ['Camping', 'Kayaking', 'Swimming', 'Photography'],
-      amenities: ['Restrooms', 'Water', 'Parking', 'Marina'],
+      coordinates: { lat: 39.0968, lng: -120.0323 },
+      activities: ['Camping', 'Hiking', 'Boating', 'Skiing', 'Water Sports'],
+      amenities: ['Restrooms', 'Water', 'Parking', 'Lodge', 'Equipment Rentals'],
       rating: 4.8,
-      price: 40,
+      price: 0,
       images: [
+        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=600&fit=crop',
         'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
-        'https://images.unsplash.com/photo-1464822759844-d150baec5c2b?w=800&h=600&fit=crop',
-        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop'
+        'https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=800&h=600&fit=crop'
       ],
       availability: true
     },
     {
       id: 6,
       name: 'Zion National Park',
-      description: 'Dramatic red cliffs and narrow slot canyons create an otherworldly hiking experience.',
+      description: 'Massive sandstone cliffs of cream, pink, and red that soar into a brilliant blue sky.',
       location: 'Utah',
-      coordinates: { lat: 37.2982, lng: -113.0263 },
-      activities: ['Camping', 'Hiking', 'Photography', 'Canyoneering'],
+      coordinates: { lat: 37.2978, lng: -113.0288 },
+      activities: ['Camping', 'Hiking', 'Canyoneering', 'Photography'],
       amenities: ['Restrooms', 'Water', 'Parking', 'Visitor Center'],
-      rating: 4.9,
-      price: 30,
+      rating: 4.7,
+      price: 35,
       images: [
         'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
         'https://images.unsplash.com/photo-1464822759844-d150baec5c2b?w=800&h=600&fit=crop',
@@ -133,6 +133,142 @@ async function main() {
       images: [
         'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
         'https://images.unsplash.com/photo-1464822759844-d150baec5c2b?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop'
+      ],
+      availability: true
+    },
+    {
+      id: 8,
+      name: 'Acadia National Park',
+      description: 'Protects the natural beauty of the highest rocky headlands along the Atlantic coastline of the United States, an abundance of habitats, and a rich cultural heritage.',
+      location: 'Maine',
+      coordinates: { lat: 44.338974, lng: -68.27343 },
+      activities: ['Hiking', 'Driving', 'Biking'],
+      amenities: ['Restrooms', 'Water', 'Parking', 'Visitor Center'],
+      rating: 4.8,
+      price: 35,
+      images: [
+        'https://images.unsplash.com/photo-1474044159687-1ee9f3a51722?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop'
+      ],
+      availability: true
+    },
+    {
+      id: 9,
+      name: 'Dinosaur Valley State Park',
+      description: 'Allows visitors to walk in dinosaur footprints in the bed of the Paluxy River, a site where dinosaurs once roamed, located a short drive from Fort Worth.',
+      location: 'Texas',
+      coordinates: { lat: 32.246194, lng: -97.813375 },
+      activities: ['Hiking', 'Swimming', 'Fishing', 'Camping', 'Mountain biking'],
+      amenities: ['Restrooms', 'Water', 'Parking', 'Park store'],
+      rating: 4.3,
+      price: 8,
+      images: [
+        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=800&h=600&fit=crop'
+      ],
+      availability: true
+    },
+    {
+      id: 10,
+      name: 'Cedar Hill State Park',
+      description: 'Offers a relaxing escape with activities like lake visits, exploring old Texas farms, and hiking through rugged limestone hills and rare prairie pockets, located just a short drive from the DFW Metroplex.',
+      location: 'Texas',
+      coordinates: { lat: 32.621721, lng: -96.979087 },
+      activities: ['Hiking', 'Biking', 'Fishing', 'Camping', 'Swimming'],
+      amenities: ['Restrooms', 'Water', 'Parking', 'Boat Ramp', 'Playground'],
+      rating: 4.0,
+      price: 7,
+      images: [
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1464822759844-d150baec5c2b?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop'
+      ],
+      availability: true
+    },
+    {
+      id: 11,
+      name: 'Lake Mineral Wells State Park',
+      description: 'Sits in the heart of cattle country, near what was once a popular health resort, offering a lake, a rock climbing area, and miles of trails, located just 45 minutes west of Fort Worth.',
+      location: 'Texas',
+      coordinates: { lat: 32.812655, lng: -98.043368 },
+      activities: ['Hiking', 'Rock Climbing', 'Boating', 'Camping', 'Fishing'],
+      amenities: ['Restrooms', 'Water', 'Parking', 'Boat Ramp', 'Park Store'],
+      rating: 4.0,
+      price: 7,
+      images: [
+        'https://images.unsplash.com/photo-1474044159687-1ee9f3a51722?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop'
+      ],
+      availability: true
+    },
+    {
+      id: 12,
+      name: 'Cleburne State Park',
+      description: 'Offers a peaceful getaway with a spring-fed lake, trails through the forest, and quiet campsites, located 30 minutes southwest of Fort Worth on the northern edge of the Hill Country.',
+      location: 'Texas',
+      coordinates: { lat: 32.252365, lng: -97.549617 },
+      activities: ['Hiking', 'Fishing', 'Boating', 'Camping', 'Swimming'],
+      amenities: ['Restrooms', 'Water', 'Parking', 'Boat Ramp', 'Park Store'],
+      rating: 4.2,
+      price: 6,
+      images: [
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1464822759844-d150baec5c2b?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop'
+      ],
+      availability: true
+    },
+    {
+      id: 13,
+      name: 'Fort Worth Nature Center',
+      description: 'Enhances the quality of life by enrolling and educating the community in the preservation and protection of natural areas.',
+      location: 'Texas',
+      coordinates: { lat: 32.8442, lng: -97.4757 },
+      activities: ['Hiking', 'Wildlife Viewing', 'Photography'],
+      amenities: ['Restrooms', 'Water', 'Parking', 'Interpretive Center'],
+      rating: 4.5,
+      price: 6,
+      images: [
+        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=800&h=600&fit=crop'
+      ],
+      availability: true
+    },
+    {
+      id: 14,
+      name: 'Eagle Mountain Lake',
+      description: 'Fort Worth’s premiere daycation spot, ideal for relaxing, swimming, and creating summer memories, with a beautiful beach at its southern point.',
+      location: 'Texas',
+      coordinates: { lat: 32.8926, lng: -97.4931 },
+      activities: ['Swimming', 'Fishing', 'Boating'],
+      amenities: ['Restrooms', 'Water', 'Parking', 'Picnic Pavilions'],
+      rating: 4.5,
+      price: 0,
+      images: [
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1464822759844-d150baec5c2b?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop'
+      ],
+      availability: true
+    },
+    {
+      id: 15,
+      name: 'Possum Kingdom State Park',
+      description: 'Located in the rugged canyon country of the Brazos River Valley, features clear, blue water and striking scenery at Lake Possum Kingdom, ideal for family outings and outdoor activities.',
+      location: 'Texas',
+      coordinates: { lat: 32.8736, lng: -98.5593 },
+      activities: ['Swimming', 'Boating', 'Fishing', 'Hiking', 'Camping'],
+      amenities: ['Restrooms', 'Water', 'Parking', 'Boat Launch', 'Park Store'],
+      rating: 4.5,
+      price: 4,
+      images: [
+        'https://images.unsplash.com/photo-1474044159687-1ee9f3a51722?w=800&h=600&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
         'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop'
       ],
       availability: true

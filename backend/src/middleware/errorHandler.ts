@@ -1,71 +1,27 @@
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '../utils/logger';
-
-export interface AppError extends Error {
-  statusCode?: number;
-  isOperational?: boolean;
-}
-
-export class CustomError extends Error implements AppError {
-  public statusCode: number;
-  public isOperational: boolean;
-
-  constructor(message: string, statusCode: number = 500, isOperational: boolean = true) {
-    super(message);
-    this.statusCode = statusCode;
-    this.isOperational = isOperational;
-
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
 
 export const errorHandler = (
-  err: AppError,
-  req: Request,
+  err: any,
+  _req: Request,
   res: Response,
   _next: NextFunction
-): void => {
-  let { statusCode = 500, message } = err;
+) => {
+  console.error(err.stack || err);
 
-  // Log error
-  logger.error('Error occurred:', {
-    error: err.message,
-    stack: err.stack,
-    url: req.url,
-    method: req.method,
-    ip: req.ip,
-    userAgent: req.get('User-Agent'),
-  });
+  // Default values
+  let status = err.statusCode || 500;
+  let message = err.message || 'Internal server error';
 
-  // Handle specific error types
-  if (err.name === 'ValidationError') {
-    statusCode = 400;
-    message = 'Validation Error';
+  // Basic heuristic for 404s (without AppError)
+  if (message && message.toLowerCase().includes('not found')) {
+    status = 404;
   }
 
-  if (err.name === 'CastError') {
-    statusCode = 400;
-    message = 'Invalid ID format';
+  // Example: Prisma "Record not found" error
+  if (err.code === 'P2025') {
+    status = 404;
+    message = 'Record not found';
   }
 
-  if (err.name === 'JsonWebTokenError') {
-    statusCode = 401;
-    message = 'Invalid token';
-  }
-
-  if (err.name === 'TokenExpiredError') {
-    statusCode = 401;
-    message = 'Token expired';
-  }
-
-  // Don't leak error details in production
-  if (process.env['NODE_ENV'] === 'production' && !err.isOperational) {
-    message = 'Something went wrong';
-  }
-
-  res.status(statusCode).json({
-    success: false,
-    message,
-    ...(process.env['NODE_ENV'] === 'development' && { stack: err.stack }),
-  });
+  res.status(status).json({ success: false, message });
 };

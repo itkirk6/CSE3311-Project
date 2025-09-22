@@ -1,78 +1,51 @@
-import { Request, Response, NextFunction } from 'express';
-// import jwt from 'jsonwebtoken';
-// import { prisma } from '../server';
-import { CustomError } from './errorHandler';
+import { Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
 
-export interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    username: string;
-  };
-}
+const prisma = new PrismaClient();
 
-export const authenticate = async (
-  req: AuthRequest,
-  _res: Response,
-  next: NextFunction
-): Promise<void> => {
+export const authenticate = async (req: any, _res: Response, next: NextFunction) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-
-    if (!token) {
-      throw new CustomError('Access denied. No token provided.', 401);
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      const error: any = new Error('No token provided');
+      error.statusCode = 401;
+      return next(error);
     }
 
-    // Mock authentication for now
-    if (token === 'mock-jwt-token') {
-      req.user = {
-        id: 'mock-user-id',
-        email: 'mock@example.com',
-        username: 'mockuser',
-      };
-      return next();
+    const token = authHeader.split(' ')[1];
+    const decoded: any = jwt.verify(token, process.env['JWT_SECRET'] as string);
+
+    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+    if (!user) {
+      const error: any = new Error('User not found');
+      error.statusCode = 401;
+      return next(error);
     }
 
-    throw new CustomError('Invalid token.', 401);
-  } catch (error) {
-    next(error);
+    req.user = user;
+    next();
+  } catch (err: any) {
+    err.statusCode = 401;
+    next(err);
   }
 };
 
-export const optionalAuth = async (
-  req: AuthRequest,
-  _res: Response,
-  next: NextFunction
-): Promise<void> => {
+export const optionalAuth = async (req: any, _res: Response, next: NextFunction) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const decoded: any = jwt.verify(token, process.env['JWT_SECRET'] as string);
 
-    if (!token) {
-      return next();
+      const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+      if (user) {
+        req.user = user;
+      }
     }
-
-    // Mock authentication for now
-    if (token === 'mock-jwt-token') {
-      req.user = {
-        id: 'mock-user-id',
-        email: 'mock@example.com',
-        username: 'mockuser',
-      };
-    }
-
     next();
-  } catch (error) {
-    // For optional auth, we don't throw errors, just continue without user
+  } catch (err) {
+    // Optional auth never blocks, just logs error
     next();
   }
-};
-
-export const requireAdmin = (
-  _req: AuthRequest,
-  _res: Response,
-  next: NextFunction
-): void => {
-  // This would be implemented when you add admin roles
-  // For now, we'll just pass through
-  next();
 };
