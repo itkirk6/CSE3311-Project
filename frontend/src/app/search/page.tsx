@@ -97,7 +97,7 @@ export default function SearchPage() {
           style={{ height: `${imageHeight}px` }}
         />
         <div className="relative z-10 flex flex-col w-full">
-          <div className="h-[50vh] flex items-center justify-center">
+          <div className="h-[60vh] flex items-center justify-center">
             <div className="w-full max-w-2xl px-4 text-center">
               <h1 className="text-3xl md:text-4xl font-bold mb-6">Find Your Next Adventure</h1>
               <div className="flex shadow-lg rounded-lg overflow-hidden">
