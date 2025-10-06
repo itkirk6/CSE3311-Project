@@ -12,7 +12,6 @@ router.get('/', optionalAuth, async (_req, res, next) => {
       include: {
         user: true,
         location: true,
-        event: true,
       },
     });
     res.json({ success: true, data: reviews });
@@ -25,7 +24,7 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
   try {
     const review = await prisma.review.findUnique({
       where: { id: req.params['id'] },
-      include: { user: true, location: true, event: true },
+      include: { user: true, location: true },
     });
 
     if (!review) {
@@ -41,7 +40,7 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
 // Protected routes
 router.post('/', authenticate, async (req: any, res, next) => {
   try {
-    const { content, rating, locationId, eventId } = req.body;
+    const { content, rating, locationId } = req.body;
 
     const newReview = await prisma.review.create({
       data: {
@@ -49,9 +48,8 @@ router.post('/', authenticate, async (req: any, res, next) => {
         rating,
         user: { connect: { id: req.user.id } },
         ...(locationId ? { location: { connect: { id: locationId } } } : {}),
-        ...(eventId ? { event: { connect: { id: eventId } } } : {}),
       },
-      include: { user: true, location: true, event: true },
+      include: { user: true, location: true },
     });
 
     res.status(201).json({ success: true, data: newReview });
@@ -78,7 +76,7 @@ router.put('/:id', authenticate, async (req: any, res, next) => {
     const updatedReview = await prisma.review.update({
       where: { id: req.params['id'] },
       data: { content, rating },
-      include: { user: true, location: true, event: true },
+      include: { user: true, location: true },
     });
 
     res.json({ success: true, data: updatedReview });

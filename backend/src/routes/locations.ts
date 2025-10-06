@@ -5,67 +5,111 @@ import { authenticate, optionalAuth } from '@/middleware/auth';
 const prisma = new PrismaClient();
 const router = Router();
 
-// Public routes
-router.get('/', optionalAuth, async (_req, res, next) => {
+console.log("✅ locations router loaded");
+
+// ✅ Create a new location
+router.post('/', authenticate, async (req, res, next) => {
   try {
-    const locations = await prisma.location.findMany({
-      include: { events: true, activities: true },
-    });
-    res.json({ success: true, data: locations });
+    const newLocation = await prisma.location.create({ data: req.body });
+    return res.status(201).json({ success: true, data: newLocation });
   } catch (error) {
     next(error);
+    return;
   }
 });
 
-router.get('/:id', optionalAuth, async (req, res, next) => {
+// ✅ Public: Recommended locations (only 3)
+router.get('/recommended', optionalAuth, async (_req, res, next) => {
+  try {
+    const locations = await prisma.location.findMany({
+      where: { isActive: true, verified: true },
+      orderBy: { rating: 'desc' },
+      take: 3,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        costPerNight: true,
+        rating: true,
+        images: true,
+        city: true,
+        state: true,
+      },
+    });
+
+    const formatted = locations.map((loc) => {
+      const imageArray = Array.isArray(loc.images) ? (loc.images as string[]) : [];
+      const firstImage = imageArray[0];
+
+      return {
+        id: loc.id,
+        name: loc.name,
+        blurb: loc.description || 'No description available.',
+        price: loc.costPerNight ? `$${loc.costPerNight}/night` : '—',
+        rating: loc.rating?.toFixed(1) || '—',
+        img: firstImage || 'https://via.placeholder.com/600x400?text=No+Image',
+        location: [loc.city, loc.state].filter(Boolean).join(', '),
+      };
+    });
+
+    return res.json({ success: true, data: formatted });
+  } catch (error) {
+    next(error);
+    return;
+  }
+});
+
+// ✅ All locations
+router.get('/all', optionalAuth, async (_req, res, next) => {
+  try {
+    const locations = await prisma.location.findMany();
+    return res.json({ success: true, data: locations });
+  } catch (error) {
+    next(error);
+    return;
+  }
+});
+
+// ✅ Single location by ID
+router.get('/id/:id', optionalAuth, async (req, res, next) => {
   try {
     const location = await prisma.location.findUnique({
-      where: { id: req.params['id'] },
-      include: { events: true, activities: true },
+      where: { id: req.params.id },
     });
 
     if (!location) {
-      throw new Error('Location not found');
+      return res.status(404).json({ success: false, message: 'Location not found' });
     }
 
-    res.json({ success: true, data: location });
+    return res.json({ success: true, data: location });
   } catch (error) {
     next(error);
+    return;
   }
 });
 
-// Protected routes
-router.post('/', authenticate, async (req, res, next) => {
+// ✅ Update a location
+router.put('/id/:id', async (req, res, next) => {
   try {
-    const newLocation = await prisma.location.create({
+    const location = await prisma.location.update({
+      where: { id: req.params.id },
       data: req.body,
     });
-    res.status(201).json({ success: true, data: newLocation });
+    return res.json({ success: true, data: location });
   } catch (error) {
     next(error);
+    return;
   }
 });
 
-router.put('/:id', authenticate, async (req, res, next) => {
+// ✅ Delete a location
+router.delete('/id/:id', async (req, res, next) => {
   try {
-    const updatedLocation = await prisma.location.update({
-      where: { id: req.params['id'] },
-      data: req.body,
-    });
-    res.json({ success: true, data: updatedLocation });
+    await prisma.location.delete({ where: { id: req.params.id } });
+    return res.json({ success: true, message: 'Location deleted successfully' });
   } catch (error) {
     next(error);
-  }
-});
-
-router.delete('/:id', authenticate, async (req, res, next) => {
-  try {
-    await prisma.location.delete({
-      where: { id: req.params['id'] },
-    });
-    res.json({ success: true, message: 'Location deleted successfully' });
-  } catch (error) {
-    next(error);
+    return;
   }
 });
 

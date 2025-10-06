@@ -12,12 +12,6 @@ services:
     networks:
       - outdoor-spot
 
-  # Redis service
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
-
 
 
   # Backend (Node.js + Prisma)
@@ -53,6 +47,7 @@ services:
       - ./.env
     environment:
       - PORT=${FRONTEND_PORT}
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
     ports:
       - "3000:3000"
     volumes:
