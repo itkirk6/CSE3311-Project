@@ -19,7 +19,11 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+
     if (errors[e.target.name]) {
       setErrors({ ...errors, [e.target.name]: '' });
     }
@@ -27,14 +31,32 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     const newErrors: Record<string, string> = {};
 
-    if (!formData.email.endsWith('@mavs.uta.edu'))
-      newErrors.email = 'Please use your UTA email address.';
-    if (formData.password !== formData.confirmPassword)
-      newErrors.confirmPassword = 'Passwords do not match.';
-    if (formData.password.length < 6)
-      newErrors.password = 'Password must be at least 6 characters.';
+    if (!formData.email.endsWith('@mavs.uta.edu')) {
+      newErrors.email = 'Please use your UTA email address (@mavs.uta.edu)';
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+    }
+
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
+    }
+
+    if (!formData.username.trim()) {
+      newErrors.username = 'Username is required';
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -43,25 +65,26 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${BASE_URL}/api/auth/register`, {
+      const response = await fetch(`${BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
-      const data = await res.json();
+      const data = await response.json();
+
       if (data.success) {
         localStorage.setItem(
           'authState',
-          JSON.stringify({ user: data.data.user, token: data.data.token })
+          JSON.stringify({ isLoggedIn: true, user: data.data.user, token: data.data.token })
         );
-        alert(`Welcome, ${formData.firstName}!`);
+        alert(`Registration successful! Welcome to OutdoorSpot, ${formData.firstName}!`);
         window.location.href = '/';
       } else {
         alert(`Registration failed: ${data.message}`);
       }
-    } catch (err) {
-      console.error('Registration error:', err);
+    } catch (error) {
+      console.error('Registration error:', error);
       alert('Registration failed. Please try again.');
     } finally {
       setLoading(false);
@@ -69,29 +92,198 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex items-center justify-center px-4">
-      <div className="max-w-md w-full space-y-8 bg-neutral-900 border border-neutral-800 p-8 rounded-2xl shadow-lg">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-orange-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        {/* Header */}
         <div className="text-center">
-          <Link href="/" className="text-3xl font-extrabold text-emerald-400">
-            OutdoorSpot
+          <Link href="/" className="flex items-center justify-center space-x-3 mb-2">
+            <div className="flex items-center space-x-2">
+              <div className="w-10 h-10 bg-blue-600 rounded flex items-center justify-center">
+                <span className="text-white font-bold text-xl">A</span>
+              </div>
+              <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+            </div>
+            <span className="text-3xl font-bold text-blue-600">OutdoorSpot</span>
           </Link>
-          <h2 className="mt-2 text-lg text-neutral-400">
-            Create your UTA account (@mavs.uta.edu)
-          </h2>
+          <h2 className="text-3xl font-bold text-gray-900">Create UTA Student Account</h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Join the UTA outdoor community with your @mavs.uta.edu email
+          </p>
+          <p className="mt-1 text-sm text-gray-600">
+            Already have an account?{' '}
+            <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-500">
+              Sign in
+            </Link>
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <input name="firstName" placeholder="First name" value={formData.firstName} onChange={handleChange} className="p-3 rounded-xl bg-neutral-800 border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-            <input name="lastName" placeholder="Last name" value={formData.lastName} onChange={handleChange} className="p-3 rounded-xl bg-neutral-800 border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+        {/* Registration Form */}
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="bg-white p-8 rounded-xl shadow-lg">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {/* First Name */}
+                <div>
+                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                    First name
+                  </label>
+                  <input
+                    id="firstName"
+                    name="firstName"
+                    type="text"
+                    autoComplete="given-name"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
+                      errors.firstName ? 'border-red-300' : 'border-gray-300'
+                    } placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
+                    placeholder="First name"
+                  />
+                  {errors.firstName && <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>}
+                </div>
+
+                {/* Last Name */}
+                <div>
+                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                    Last name
+                  </label>
+                  <input
+                    id="lastName"
+                    name="lastName"
+                    type="text"
+                    autoComplete="family-name"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
+                      errors.lastName ? 'border-red-300' : 'border-gray-300'
+                    } placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
+                    placeholder="Last name"
+                  />
+                  {errors.lastName && <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>}
+                </div>
+              </div>
+
+              {/* Username */}
+              <div>
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                  Username
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
+                    errors.username ? 'border-red-300' : 'border-gray-300'
+                  } placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
+                  placeholder="Choose a username"
+                />
+                {errors.username && <p className="mt-1 text-sm text-red-600">{errors.username}</p>}
+              </div>
+
+              {/* Email */}
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  UTA Email Address
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
+                    errors.email ? 'border-red-300' : 'border-gray-300'
+                  } placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
+                  placeholder="yourname@mavs.uta.edu"
+                />
+                {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+              </div>
+
+              {/* Password */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
+                    errors.password ? 'border-red-300' : 'border-gray-300'
+                  } placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
+                  placeholder="Create a password"
+                />
+                {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
+              </div>
+
+              {/* Confirm Password */}
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                  Confirm password
+                </label>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
+                    errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+                  } placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm`}
+                  placeholder="Confirm your password"
+                />
+                {errors.confirmPassword && (
+                  <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Terms */}
+            <div className="flex items-center mt-4">
+              <input
+                id="terms"
+                name="terms"
+                type="checkbox"
+                required
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="terms" className="ml-2 block text-sm text-gray-900">
+                I agree to the{' '}
+                <a href="#" className="text-blue-600 hover:text-blue-500">
+                  Terms of Service
+                </a>{' '}
+                and{' '}
+                <a href="#" className="text-blue-600 hover:text-blue-500">
+                  Privacy Policy
+                </a>
+              </label>
+            </div>
+
+            {/* Submit */}
+            <div className="mt-6">
+              <button
+                type="submit"
+                disabled={loading}
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
+              >
+                {loading ? 'Creating account...' : 'Join OutdoorSpot as UTA Student'}
+              </button>
+            </div>
+
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800 text-center">
+                🏛️ Exclusively for University of Texas at Arlington students. Connect with fellow Mavericks who love the outdoors!
+              </p>
+            </div>
           </div>
-          <input name="username" placeholder="Username" value={formData.username} onChange={handleChange} className="w-full p-3 rounded-xl bg-neutral-800 border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-          <input name="email" type="email" placeholder="UTA Email" value={formData.email} onChange={handleChange} className="w-full p-3 rounded-xl bg-neutral-800 border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-          <input name="password" type="password" placeholder="Password" value={formData.password} onChange={handleChange} className="w-full p-3 rounded-xl bg-neutral-800 border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-          <input name="confirmPassword" type="password" placeholder="Confirm Password" value={formData.confirmPassword} onChange={handleChange} className="w-full p-3 rounded-xl bg-neutral-800 border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-          <button type="submit" disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-500 rounded-xl p-3 font-semibold text-white transition">
-            {loading ? 'Registering...' : 'Create Account'}
-          </button>
         </form>
       </div>
     </div>
