@@ -70,6 +70,7 @@ router.get('/all', optionalAuth, async (_req, res, next) => {
   }
 });
 
+
 // ✅ Single location by ID
 router.get('/id/:id', optionalAuth, async (req, res, next) => {
   try {

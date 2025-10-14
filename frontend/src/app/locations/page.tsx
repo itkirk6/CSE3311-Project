@@ -10,24 +10,26 @@ import MapComponent from '@/app/components/MapComponent';
 interface Location {
   id: string;
   name: string;
-  coordinates: { lat: number; lng: number };
+  latitude: number;
+  longitude: number;
   description?: string;
   price?: string;
   rating?: number;
-  images?: string[];
-  location?: string;
+  images?: any; // JSON or array
 }
 
 export default function LocationsPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
   const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
+  // 🧭 Fetch all locations
   const fetchLocations = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/locations`);
+      const res = await fetch(`${API_URL}/api/locations/all`);
       const json = await res.json();
       if (json.success) setLocations(json.data);
       else setError('Failed to load locations.');
@@ -43,19 +45,28 @@ export default function LocationsPage() {
     fetchLocations();
   }, []);
 
-  const [query, setQuery] = useState('');
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
     router.push(`/search?q=${encodeURIComponent(query.trim())}`);
   };
 
+  // 🧠 Helper — safely extract first image
+  const getFirstImage = (images: any): string => {
+    if (!images) return '/placeholder.jpg';
+    if (Array.isArray(images)) {
+      if (typeof images[0] === 'string') return images[0];
+      if (images[0]?.url) return images[0].url;
+    }
+    if (typeof images === 'object' && images.url) return images.url;
+    return '/placeholder.jpg';
+  };
+
   return (
     <main className="flex flex-col min-h-screen bg-neutral-900 text-neutral-100">
       <NavBar />
 
-      {/* Hero section with background image */}
+      {/* Hero section */}
       <section className="relative h-[70vh] w-full overflow-hidden">
         <Image
           src="/locations_screen.jpg"
@@ -65,7 +76,8 @@ export default function LocationsPage() {
           className="object-cover opacity-60"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/60 via-neutral-950/40 to-neutral-900" />
-        <div className="relative z-10 flex h-full items-center justify-center">
+      
+        <div className="relative z-10 flex h-full items-start justify-center pt-24">
           <div className="max-w-xl w-full text-center px-4">
             <h1 className="text-4xl font-bold mb-6">Explore New Destinations</h1>
             <form onSubmit={handleSearch} className="flex shadow-md rounded-2xl overflow-hidden">
@@ -88,28 +100,17 @@ export default function LocationsPage() {
       </section>
 
       {/* Map Section */}
-      <section className="py-12 px-6 max-w-7xl mx-auto w-full">
-        <h2 className="text-2xl font-bold mb-6">Interactive Map</h2>
-        <div className="rounded-2xl overflow-hidden border border-neutral-800">
+      <section className="-mt-72 relative z-20 px-6 max-w-7xl mx-auto w-full">
+        <h2 className="text-2xl font-bold mb-6 text-center">Interactive Map</h2>
+        <div className="rounded-2xl overflow-hidden border border-neutral-800 shadow-2xl">
           <MapComponent
             locations={locations.map((loc) => ({
               id: loc.id,
               name: loc.name,
-              latitude: loc.coordinates.lat,
-              longitude: loc.coordinates.lng,
-              address: loc.location || '',
-              city: '',
-              state: '',
-              activities: [],
-              rating: loc.rating || 0,
-              price: Number(loc.price) || 0,
-              images: loc.images || [],
-              availability: true,
+              latitude: loc.latitude,
+              longitude: loc.longitude,
+              description: loc.description,
             }))}
-            onLocationSelect={(location) => {
-              const el = document.getElementById(`location-${location.id}`);
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }}
           />
         </div>
       </section>
@@ -127,12 +128,11 @@ export default function LocationsPage() {
             {locations.map((loc) => (
               <article
                 key={loc.id}
-                id={`location-${loc.id}`}
                 className="rounded-2xl border border-neutral-800 bg-neutral-900 hover:border-emerald-600 transition overflow-hidden"
               >
                 <div className="h-48 relative">
                   <img
-                    src={loc.images?.[0] || '/placeholder.jpg'}
+                    src={getFirstImage(loc.images)}
                     alt={loc.name}
                     className="object-cover w-full h-full"
                   />

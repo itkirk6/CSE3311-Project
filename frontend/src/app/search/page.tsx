@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import NavBar from '@/app/components/NavBar';
 import Footer from '@/app/components/Footer';
@@ -15,7 +16,11 @@ type Location = {
 };
 
 export default function SearchPage() {
-  const [query, setQuery] = useState('');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
+
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -24,12 +29,20 @@ export default function SearchPage() {
 
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  const handleSearch = async (p = 1) => {
+  // ✅ Main search logic
+  const handleSearch = async (p = 1, qOverride?: string) => {
+    const searchTerm = qOverride ?? query;
+    if (!searchTerm.trim()) return;
+
+    // Update URL without reload
+    router.push(`/search?q=${encodeURIComponent(searchTerm)}`);
+
     setLoading(true);
     setSearched(true);
+
     try {
       const res = await fetch(
-        `${API_URL}/api/search/locations?q=${encodeURIComponent(query)}&page=${p}&limit=50`
+        `${API_URL}/api/search/locations?q=${encodeURIComponent(searchTerm)}&page=${p}&limit=50`
       );
       const data = await res.json();
       if (data.success) {
@@ -47,6 +60,16 @@ export default function SearchPage() {
     }
   };
 
+  // ✅ Auto-run search when query param changes
+  useEffect(() => {
+    if (initialQuery) {
+      setQuery(initialQuery);
+      handleSearch(1, initialQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
+
+  // 🖼 Background / dimension logic
   const containerRef = useRef<HTMLDivElement>(null);
   const [imageRatio, setImageRatio] = useState<number | null>(null);
   const [imageHeight, setImageHeight] = useState(0);
@@ -82,6 +105,7 @@ export default function SearchPage() {
         className="relative flex-1"
         style={{ minHeight: `${containerMinHeight}px` }}
       >
+        {/* Background */}
         <div className="absolute inset-x-0 top-0" style={{ height: `${imageHeight}px` }}>
           <Image
             src="/search_screen.jpg"
@@ -89,14 +113,22 @@ export default function SearchPage() {
             fill
             className="object-cover opacity-50"
             priority
-            onLoad={(e) => setImageRatio(e.target.naturalHeight / e.target.naturalWidth)}
+            onLoad={(e) =>
+              setImageRatio(
+                (e.target as HTMLImageElement).naturalHeight /
+                  (e.target as HTMLImageElement).naturalWidth
+              )
+            }
           />
         </div>
         <div
           className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/60 via-black/50 to-gray-900"
           style={{ height: `${imageHeight}px` }}
         />
+
+        {/* Foreground */}
         <div className="relative z-10 flex flex-col w-full">
+          {/* Hero */}
           <div className="h-[60vh] flex items-center justify-center">
             <div className="w-full max-w-2xl px-4 text-center">
               <h1 className="text-3xl md:text-4xl font-bold mb-6">Find Your Next Adventure</h1>
@@ -119,6 +151,7 @@ export default function SearchPage() {
             </div>
           </div>
 
+          {/* Results */}
           <main className="flex-1 px-6 py-10 max-w-5xl mx-auto w-full">
             {searched && loading && <p className="text-center">Loading...</p>}
 
