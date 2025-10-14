@@ -67,8 +67,10 @@ const MapComponent: React.FC<MapComponentProps> = ({ locations, userLocation, on
               }}
             >
               <Popup>
-                <h3 className="font-semibold text-gray-100">{loc.name}</h3>
-                {loc.description && <p className="text-gray-400 text-sm">{loc.description}</p>}
+                <div className="text-black">
+                  <h3 className="font-semibold text-lg text-gray-900">{loc.name}</h3>
+                  {loc.description && <p className="text-gray-400 text-sm">{loc.description}</p>}
+                </div>
               </Popup>
             </Marker>
           ))}
