@@ -79,5 +79,9 @@
   "bugs": {
     "url": "https://github.com/yourusername/outdoor-spot/issues"
   },
-  "homepage": "https://github.com/yourusername/outdoor-spot#readme"
+  "homepage": "https://github.com/yourusername/outdoor-spot#readme",
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "react-leaflet": "^5.0.0"
+  }
 }
