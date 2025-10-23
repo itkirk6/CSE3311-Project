@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
-const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://192.168.1.12:3001';
+const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -65,11 +65,27 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
+      // Check if BASE_URL is properly set
+      if (!BASE_URL || BASE_URL === 'undefined') {
+        throw new Error('Backend URL not configured');
+      }
+
       const response = await fetch(`${BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
+
+      // Check if response is ok
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Response is not JSON');
+      }
 
       const data = await response.json();
 

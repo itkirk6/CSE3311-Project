@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -22,6 +22,11 @@ export default function LoginPage() {
     
     // Call the backend API
     try {
+      // Check if API_URL is properly set
+      if (!API_URL || API_URL === 'undefined') {
+        throw new Error('Backend URL not configured');
+      }
+
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -29,6 +34,17 @@ export default function LoginPage() {
         },
         body: JSON.stringify(formData),
       });
+
+      // Check if response is ok
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Response is not JSON');
+      }
 
       const data = await response.json();
 
