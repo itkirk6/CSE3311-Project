@@ -76,6 +76,22 @@ router.get('/id/:id', optionalAuth, async (req, res, next) => {
   try {
     const location = await prisma.location.findUnique({
       where: { id: req.params.id },
+      include: {
+        reviews: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                firstName: true,
+                lastName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!location) {
