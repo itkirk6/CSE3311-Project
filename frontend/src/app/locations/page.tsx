@@ -31,7 +31,6 @@ export default function LocationsPage() {
     try {
       // Check if API_URL is properly set
       if (!API_URL || API_URL === 'undefined') {
-        console.log('Backend URL not configured, using mock data');
         throw new Error('Backend URL not configured');
       }
 
@@ -61,46 +60,15 @@ export default function LocationsPage() {
       if (json.success) {
         console.log('Successfully fetched locations:', json.data);
         setLocations(json.data);
+        setError(null);
       } else {
         throw new Error('API returned unsuccessful response');
       }
     } catch (e) {
-      console.log('Using mock data due to error:', e.message);
-      // Set mock data for development
-      setLocations([
-        {
-          id: '1',
-          name: 'Yosemite National Park',
-          latitude: 37.8651,
-          longitude: -119.5383,
-          description: 'Famous for its granite cliffs, waterfalls, and giant sequoias.',
-          price: '$35',
-          rating: 4.8,
-          images: ['/placeholder.jpg']
-        },
-        {
-          id: '2', 
-          name: 'Grand Canyon National Park',
-          latitude: 36.1069,
-          longitude: -112.1129,
-          description: 'One of the world\'s most spectacular natural wonders.',
-          price: '$35',
-          rating: 4.9,
-          images: ['/placeholder.jpg']
-        },
-        {
-          id: '3',
-          name: 'Yellowstone National Park', 
-          latitude: 44.4280,
-          longitude: -110.5885,
-          description: 'America\'s first national park with geysers and wildlife.',
-          price: '$35',
-          rating: 4.7,
-          images: ['/placeholder.jpg']
-        }
-      ]);
-      // Don't set error state, just use mock data
-      setError(null);
+      const message = e instanceof Error ? e.message : 'Failed to fetch locations';
+      console.error('Failed to fetch locations:', message);
+      setLocations([]);
+      setError(message);
     } finally {
       setLoading(false);
     }
