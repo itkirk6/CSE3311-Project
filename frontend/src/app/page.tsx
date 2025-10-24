@@ -1,29 +1,22 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
+import PageShell from '@/app/components/PageShell';
 
 export default function Page() {
   const router = useRouter();
+
   const [navQuery, setNavQuery] = useState('');
   const [heroQuery, setHeroQuery] = useState('');
-  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const [recommended, setRecommended] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
-
-  // Respect reduced motion
-  useEffect(() => {
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (media.matches && videoRef.current) {
-      videoRef.current.pause();
-    }
-  }, []);
 
   // Fetch featured locations
   useEffect(() => {
@@ -33,45 +26,38 @@ export default function Page() {
           throw new Error('Backend URL not configured');
         }
 
-        console.log('Attempting to fetch from:', `${API_URL}/api/locations/recommended`);
-        
+        const controller = new AbortController();
         const res = await fetch(`${API_URL}/api/locations/recommended`, {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          // Add timeout to prevent hanging
-          signal: AbortSignal.timeout(5000) // 5 second timeout
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : controller.signal,
         });
-        
-        // Check if response is ok
+
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
         }
 
-        // Check if response is JSON
         const contentType = res.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
           throw new Error('Response is not JSON');
         }
 
         const json = await res.json();
-        if (json.success) {
-          console.log('Successfully fetched recommended locations:', json.data);
-          setRecommended(json.data);
+        if (json?.success) {
+          setRecommended(json.data || []);
         } else {
           throw new Error('API returned unsuccessful response');
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        setError(err.message || 'Failed to load featured locations.');
+        setError(err?.message || 'Failed to load featured locations.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchRecommended();
-  }, []);
+  }, [API_URL]);
 
   const submitSearch = (q: string) => {
     const query = q.trim();
@@ -80,29 +66,14 @@ export default function Page() {
   };
 
   return (
-    <main className="min-h-screen bg-neutral-900 text-neutral-100">
-      {/* Use shared NavBar component */}
+    <main className="min-h-screen text-neutral-100">
+      {/* Fixed header */}
       <NavBar navQuery={navQuery} setNavQuery={setNavQuery} submitSearch={submitSearch} />
 
-      {/* Hero section with video */}
-      <section className="relative h-[85vh] min-h-[540px] w-full overflow-hidden">
-        <video
-          ref={videoRef}
-          className="absolute inset-0 h-full w-full object-cover pointer-events-none select-none z-0"
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="metadata"
-          disablePictureInPicture
-          controls={false}
-          aria-hidden="true"
-          src="/splash_screen.mp4"
-        />
-        <div className="absolute inset-0 z-10 bg-gradient-to-b from-neutral-950/40 via-neutral-950/20 to-neutral-900"></div>
-        <div className="absolute inset-0 z-20" aria-hidden="true"></div>
-
-        <div className="relative z-30 mx-auto flex h-full max-w-7xl items-center px-4 sm:px-6 lg:px-8">
+      {/* Page shell provides the scrolling background (no layout coupling) */}
+      <PageShell videoSrc="/splash_screen.mp4" withFixedHeaderOffset>
+        {/* Top intro / search — uses padding, not height */}
+        <section className="py-10 sm:py-14">
           <div className="max-w-2xl">
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight">
               Find your next North Texas escape
@@ -110,6 +81,7 @@ export default function Page() {
             <p className="mt-4 max-w-xl text-neutral-300">
               Camp under big skies. Wake to quiet horizons. Discover hidden spots locals love.
             </p>
+
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -135,12 +107,10 @@ export default function Page() {
               </div>
             </form>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Featured Locations */}
-      <section className="relative py-16 bg-neutral-900">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Featured Locations */}
+        <section className="relative py-16">
           <h2 className="text-2xl sm:text-3xl font-bold">Featured Locations</h2>
           <p className="mt-2 text-neutral-400">Hand-picked North Texas spots to kickstart your trip.</p>
 
@@ -150,7 +120,7 @@ export default function Page() {
             {!loading && !error && recommended.length === 0 && (
               <p className="text-neutral-400">No featured locations found.</p>
             )}
-            
+
             {recommended.map((spot) => (
               <article
                 key={spot.id}
@@ -158,7 +128,7 @@ export default function Page() {
               >
                 <div className="relative h-48 overflow-hidden">
                   <img
-                    src={spot.img}
+                    src={spot.img || 'https://via.placeholder.com/600x400?text=No+Image'}
                     alt={spot.name}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     loading="lazy"
@@ -185,13 +155,10 @@ export default function Page() {
               </article>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-
-      {/* Why Choose OutdoorSpot */}
-      <section className="border-y border-neutral-900 bg-neutral-900 relative py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Why Choose section */}
+        <section className="border-y border-neutral-900 py-16">
           <h2 className="text-2xl sm:text-3xl font-bold text-center">Why Choose OutdoorSpot?</h2>
           <div className="mt-10 grid grid-cols-1 gap-8 md:grid-cols-3">
             <div className="rounded-2xl border border-neutral-900 bg-neutral-900 p-6 text-center">
@@ -210,11 +177,10 @@ export default function Page() {
               <p className="mt-2 text-neutral-300">Real campers. Real feedback. Plan with confidence.</p>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Use shared Footer component */}
-      <Footer />
+        <Footer />
+      </PageShell>
     </main>
   );
 }
