@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import NavBar from '@/app/components/NavBar';
-import Footer from '@/app/components/Footer';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import HeroSection from '@/app/components/HeroSection';
+import PageShell from '@/app/components/PageShell';
+import Section from '@/app/components/Section';
 
 type Location = {
   id: string;
@@ -30,12 +31,10 @@ export default function SearchPage() {
 
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  // ✅ Main search logic
   const handleSearch = async (p = 1, qOverride?: string) => {
     const searchTerm = qOverride ?? query;
     if (!searchTerm.trim()) return;
 
-    // Update URL without reload
     router.push(`/search?q=${encodeURIComponent(searchTerm)}`);
 
     setLoading(true);
@@ -61,7 +60,6 @@ export default function SearchPage() {
     }
   };
 
-  // ✅ Auto-run search when query param changes
   useEffect(() => {
     if (initialQuery) {
       setQuery(initialQuery);
@@ -70,161 +68,128 @@ export default function SearchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery]);
 
-  // 🖼 Background / dimension logic
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [imageRatio, setImageRatio] = useState<number | null>(null);
-  const [imageHeight, setImageHeight] = useState(0);
-  const [containerMinHeight, setContainerMinHeight] = useState(0);
-
-  const updateDimensions = () => {
-    if (containerRef.current && imageRatio !== null) {
-      const width = containerRef.current.clientWidth;
-      const scaled = width * imageRatio;
-      setImageHeight(scaled);
-      setContainerMinHeight(Math.max(scaled, window.innerHeight * 0.65));
-    } else {
-      setContainerMinHeight(window.innerHeight * 0.65);
-    }
-  };
-
-  useEffect(() => {
-    updateDimensions();
-  }, [imageRatio]);
-
-  useEffect(() => {
-    const handleResize = () => updateDimensions();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [imageRatio]);
-
   return (
-    <div className="flex flex-col min-h-screen bg-gray-900 text-white">
-      <NavBar />
-
-      <div
-        ref={containerRef}
-        className="relative flex-1"
-        style={{ minHeight: `${containerMinHeight}px` }}
-      >
-        {/* Background */}
-        <div className="absolute inset-x-0 top-0" style={{ height: `${imageHeight}px` }}>
-          <Image
-            src="/search_screen.jpg"
-            alt="Search Background"
-            fill
-            className="object-cover opacity-50"
-            priority
-            onLoad={(e) =>
-              setImageRatio(
-                (e.target as HTMLImageElement).naturalHeight /
-                  (e.target as HTMLImageElement).naturalWidth
-              )
-            }
-          />
-        </div>
-        <div
-          className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/60 via-black/50 to-gray-900"
-          style={{ height: `${imageHeight}px` }}
+    <PageShell
+      mainClassName="space-y-16 pb-24"
+      background={
+        <Image
+          src="/search_screen.jpg"
+          alt="Search background"
+          fill
+          priority
+          className="object-cover"
         />
-
-        {/* Foreground */}
-        <div className="relative z-10 flex flex-col w-full">
-          {/* Hero */}
-          <div className="h-[60vh] flex items-center justify-center">
-            <div className="w-full max-w-2xl px-4 text-center">
-              <h1 className="text-3xl md:text-4xl font-bold mb-6">Find Your Next Adventure</h1>
-              <div className="flex shadow-lg rounded-lg overflow-hidden">
-                <input
-                  type="text"
-                  placeholder="Search for locations..."
-                  className="flex-1 p-4 text-lg bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch(1)}
-                />
-                <button
-                  onClick={() => handleSearch(1)}
-                  className="bg-green-600 hover:bg-green-700 px-6 text-lg font-semibold transition-colors"
-                >
-                  Search
-                </button>
-              </div>
+      }
+    >
+      <HeroSection
+        className="items-center py-12"
+        overlayClassName="from-neutral-950/60 via-neutral-950/30 to-neutral-900"
+        heightClassName="min-h-[460px] h-[70vh]"
+      >
+        <Section as="div" className="flex h-full items-center justify-center text-center">
+          <div className="w-full max-w-2xl">
+            <h1 className="text-4xl font-bold sm:text-5xl">Find Your Next Adventure</h1>
+            <p className="mt-4 text-neutral-300">
+              Search our full catalog of outdoor escapes by name, vibe, or must-have amenities.
+            </p>
+            <div className="mt-8 flex overflow-hidden rounded-2xl shadow-lg">
+              <input
+                type="text"
+                placeholder="Search for locations..."
+                className="flex-1 bg-white px-4 py-3 text-lg text-gray-900 placeholder-gray-500 focus:outline-none"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch(1)}
+              />
+              <button
+                onClick={() => handleSearch(1)}
+                className="bg-emerald-600 px-6 text-lg font-semibold text-white transition hover:bg-emerald-500"
+              >
+                Search
+              </button>
             </div>
           </div>
+        </Section>
+      </HeroSection>
 
-          {/* Results */}
-          <main className="flex-1 px-6 py-10 max-w-5xl mx-auto w-full">
-            {searched && loading && <p className="text-center">Loading...</p>}
+      <Section className="space-y-8">
+        <header className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-2xl font-bold">Search Results</h2>
+            <p className="text-neutral-300">Browse everything that matches your latest search.</p>
+          </div>
+          {searched && (
+            <p className="text-sm text-neutral-400">
+              Showing page {page} of {Math.max(totalPages, 1)} for “{query}”.
+            </p>
+          )}
+        </header>
 
-            {searched && !loading && results.length === 0 && (
-              <p className="text-center text-gray-400">No results found.</p>
-            )}
+        {searched && loading && <p className="text-center text-neutral-400">Loading...</p>}
 
-            <div className="space-y-6">
-              {results.map((loc) => (
-                <article
-                  key={loc.id}
-                  className="relative group flex items-center rounded-2xl border border-gray-800 bg-gray-800/90 transition hover:border-emerald-600 overflow-hidden"
-                >
-                  {/* Make the whole card clickable */}
-                  <Link
-                    href={`/location?id=${encodeURIComponent(loc.id)}`}
-                    className="absolute inset-0 z-10"
-                    aria-label={`View details for ${loc.name}`}
-                  />
+        {searched && !loading && results.length === 0 && (
+          <p className="text-center text-neutral-400">No results found.</p>
+        )}
 
-                  <div className="h-24 w-36 flex-shrink-0 relative overflow-hidden">
-                    <img
-                      src={loc.img || 'https://via.placeholder.com/150'}
-                      alt={loc.name}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                    />
-                    {/* Optional subtle gradient for readability */}
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                  </div>
+        <div className="space-y-6">
+          {results.map((loc) => (
+            <article
+              key={loc.id}
+              className="group relative flex items-center overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/80 p-4 backdrop-blur transition hover:border-emerald-600"
+            >
+              <Link
+                href={`/location?id=${encodeURIComponent(loc.id)}`}
+                className="absolute inset-0"
+                aria-label={`View details for ${loc.name}`}
+              />
 
-                  <div className="ml-4 mr-4 my-3 flex-1">
-                    <h2 className="text-lg font-semibold">{loc.name}</h2>
-                    <p className="text-sm text-gray-300 line-clamp-2">
-                      {loc.blurb || 'No description available.'}
-                    </p>
-                    <div className="flex items-center mt-2 space-x-4 text-sm text-gray-400">
-                      <span>⭐ {loc.rating ?? '—'}</span>
-                      <span className="text-emerald-400">{loc.price || '—'}</span>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {searched && totalPages > 1 && (
-              <div className="flex justify-center mt-8 space-x-4">
-                <button
-                  onClick={() => handleSearch(page - 1)}
-                  disabled={page <= 1}
-                  className="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-40"
-                >
-                  Prev
-                </button>
-                <span>
-                  Page {page} of {totalPages}
-                </span>
-                <button
-                  onClick={() => handleSearch(page + 1)}
-                  disabled={page >= totalPages}
-                  className="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-40"
-                >
-                  Next
-                </button>
+              <div className="relative h-24 w-36 flex-shrink-0 overflow-hidden rounded-xl border border-neutral-800">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={loc.img || 'https://via.placeholder.com/150'}
+                  alt={loc.name}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
               </div>
-            )}
-          </main>
-        </div>
-      </div>
 
-      <Footer />
-    </div>
+              <div className="ml-4 flex-1 pr-4">
+                <h3 className="text-lg font-semibold text-white">{loc.name}</h3>
+                <p className="mt-1 line-clamp-2 text-sm text-neutral-300">
+                  {loc.blurb || 'No description available.'}
+                </p>
+                <div className="mt-3 flex items-center gap-4 text-sm text-neutral-400">
+                  <span>⭐ {loc.rating ?? '—'}</span>
+                  <span className="text-emerald-400">{loc.price || '—'}</span>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {searched && totalPages > 1 && (
+          <div className="flex items-center justify-center gap-4">
+            <button
+              onClick={() => handleSearch(Math.max(page - 1, 1))}
+              disabled={page === 1}
+              className="rounded-xl border border-neutral-800 px-4 py-2 text-sm font-medium text-neutral-200 transition disabled:cursor-not-allowed disabled:opacity-40 hover:border-emerald-600"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-neutral-400">
+              Page {page} of {totalPages}
+            </span>
+            <button
+              onClick={() => handleSearch(Math.min(page + 1, totalPages))}
+              disabled={page === totalPages}
+              className="rounded-xl border border-neutral-800 px-4 py-2 text-sm font-medium text-neutral-200 transition disabled:cursor-not-allowed disabled:opacity-40 hover:border-emerald-600"
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </Section>
+    </PageShell>
   );
 }
