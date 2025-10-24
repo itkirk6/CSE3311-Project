@@ -2,11 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import NavBar from '@/app/components/NavBar';
-import Footer from '@/app/components/Footer';
-import MapComponent from '@/app/components/MapComponent';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import HeroSection from '@/app/components/HeroSection';
+import MapComponent from '@/app/components/MapComponent';
+import PageShell from '@/app/components/PageShell';
+import Section from '@/app/components/Section';
+
+type LocationImage = string | { url?: string | null } | null;
+type LocationMedia = LocationImage | LocationImage[];
 
 interface Location {
   id: string;
@@ -16,7 +20,7 @@ interface Location {
   description?: string;
   price?: string;
   rating?: number;
-  images?: any; // JSON or array
+  images?: LocationMedia;
 }
 
 export default function LocationsPage() {
@@ -27,55 +31,47 @@ export default function LocationsPage() {
   const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  // 🧭 Fetch all locations
-  const fetchLocations = async () => {
-    try {
-      // Check if API_URL is properly set
-      if (!API_URL || API_URL === 'undefined') {
-        throw new Error('Backend URL not configured');
-      }
-
-      console.log('Attempting to fetch from:', `${API_URL}/api/locations/all`);
-      
-      const res = await fetch(`${API_URL}/api/locations/all`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // Add timeout to prevent hanging
-        signal: AbortSignal.timeout(5000) // 5 second timeout
-      });
-      
-      // Check if response is ok
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-
-      // Check if response is JSON
-      const contentType = res.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Response is not JSON');
-      }
-
-      const json = await res.json();
-      if (json.success) {
-        console.log('Successfully fetched locations:', json.data);
-        setLocations(json.data);
-      } else {
-        throw new Error('API returned unsuccessful response');
-      }
-    } catch (e) {
-      console.error(e);
-      setError(e.message || 'Failed to load locations.');
-      setLocations([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        if (!API_URL || API_URL === 'undefined') {
+          throw new Error('Backend URL not configured');
+        }
+
+        const res = await fetch(`${API_URL}/api/locations/all`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: AbortSignal.timeout(5000),
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('Response is not JSON');
+        }
+
+        const json = await res.json();
+        if (json.success) {
+          setLocations(json.data as Location[]);
+        } else {
+          throw new Error('API returned unsuccessful response');
+        }
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to load locations.';
+        setError(message);
+        setLocations([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchLocations();
-  }, []);
+  }, [API_URL]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,8 +79,7 @@ export default function LocationsPage() {
     router.push(`/search?q=${encodeURIComponent(query.trim())}`);
   };
 
-  // 🧠 Helper — safely extract first image
-  const getFirstImage = (images: any): string => {
+  const getFirstImage = (images: LocationMedia | undefined): string => {
     if (!images) return '/placeholder.jpg';
     if (Array.isArray(images)) {
       if (typeof images[0] === 'string') return images[0];
@@ -95,46 +90,41 @@ export default function LocationsPage() {
   };
 
   return (
-    <main className="flex flex-col min-h-screen bg-neutral-900 text-neutral-100">
-      <NavBar />
-
-      {/* Hero section */}
-      <section className="relative h-[70vh] w-full overflow-hidden">
-        <Image
-          src="/locations_screen.jpg"
-          alt="Locations background"
-          fill
-          priority
-          className="object-cover opacity-60"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/60 via-neutral-950/40 to-neutral-900" />
-      
-        <div className="relative z-10 flex h-full items-start justify-center pt-24">
-          <div className="max-w-xl w-full text-center px-4">
-            <h1 className="text-4xl font-bold mb-6">Explore New Destinations</h1>
-            <form onSubmit={handleSearch} className="flex shadow-md rounded-2xl overflow-hidden">
+    <PageShell mainClassName="space-y-24 pb-24">
+      <HeroSection
+        background={<Image src="/locations_screen.jpg" alt="Locations background" fill priority className="object-cover" />}
+        className="items-start pt-24"
+        overlayClassName="from-neutral-950/60 via-neutral-950/40 to-neutral-900"
+        heightClassName="min-h-[420px] h-[70vh]"
+      >
+        <Section as="div" className="flex h-full items-center justify-center text-center">
+          <div className="w-full max-w-xl">
+            <h1 className="text-4xl font-bold sm:text-5xl">Explore New Destinations</h1>
+            <p className="mt-4 text-neutral-300">
+              Browse every outdoor getaway we know about across North Texas, then dive deeper for the perfect stay.
+            </p>
+            <form onSubmit={handleSearch} className="mt-8 flex overflow-hidden rounded-2xl shadow-lg">
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search locations..."
-                className="flex-1 p-4 text-lg bg-white text-gray-900 placeholder-gray-500 focus:outline-none"
+                className="flex-1 bg-white px-4 py-3 text-lg text-gray-900 placeholder-gray-500 focus:outline-none"
               />
-              <button
-                type="submit"
-                className="bg-emerald-600 hover:bg-emerald-500 px-6 font-semibold transition"
-              >
+              <button type="submit" className="bg-emerald-600 px-6 text-lg font-semibold text-white transition hover:bg-emerald-500">
                 Search
               </button>
             </form>
           </div>
-        </div>
-      </section>
+        </Section>
+      </HeroSection>
 
-      {/* Map Section */}
-      <section className="-mt-72 relative z-20 px-6 max-w-7xl mx-auto w-full">
-        <h2 className="text-2xl font-bold mb-6 text-center">Interactive Map</h2>
-        <div className="rounded-2xl overflow-hidden border border-neutral-800 shadow-2xl">
+      <Section className="space-y-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold">Interactive Map</h2>
+          <p className="mt-2 text-neutral-300">Zoom around North Texas and see every spot at a glance.</p>
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/70 backdrop-blur">
           <MapComponent
             locations={locations.map((loc) => ({
               id: loc.id,
@@ -143,61 +133,63 @@ export default function LocationsPage() {
               longitude: loc.longitude,
               description: loc.description,
             }))}
-            initialCenter={{ lat: 32.85, lng: -97.01 }} // ✅ DFW-ish center
-            initialZoom={8}                             // ✅ zoom for metro view (9–11 works well)
-            preferCenter                                 // ✅ force center/zoom even with many pins
+            initialCenter={{ lat: 32.85, lng: -97.01 }}
+            initialZoom={8}
+            preferCenter
           />
         </div>
-      </section>
+      </Section>
 
-      {/* Locations Grid */}
-      <section className="pb-20 px-6 max-w-7xl mx-auto w-full">
-        <h2 className="text-2xl font-bold mb-6">All Locations</h2>
+      <Section className="space-y-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold">All Locations</h2>
+          <p className="mt-2 text-neutral-300">
+            Discover cabins, campsites, and hidden gems curated by the OutdoorSpot team.
+          </p>
+        </div>
 
         {loading ? (
-          <p className="text-neutral-400 text-center">Loading...</p>
+          <p className="text-center text-neutral-400">Loading...</p>
         ) : error ? (
-          <p className="text-red-400 text-center">{error}</p>
+          <p className="text-center text-red-400">{error}</p>
+        ) : locations.length === 0 ? (
+          <p className="text-center text-neutral-400">No locations available yet.</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {locations.map((loc) => (
               <article
                 key={loc.id}
-                className="relative group rounded-2xl border border-neutral-800 bg-neutral-900 hover:border-emerald-600 transition overflow-hidden cursor-pointer"
+                className="group flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/80 backdrop-blur transition hover:border-emerald-600"
               >
-                {/* Full-card clickable overlay */}
-                <Link
-                  href={`/location?id=${encodeURIComponent(loc.id)}`}
-                  className="absolute inset-0 z-10"
-                  aria-label={`View details for ${loc.name}`}
-                />
-
-                <div className="h-48 relative">
+                <div className="relative h-48 w-full">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={getFirstImage(loc.images)}
                     alt={loc.name}
-                    className="object-cover w-full h-full"
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    loading="lazy"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-neutral-900/70 to-transparent" />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-neutral-900/60 to-transparent" />
                 </div>
-
-                <div className="p-5">
-                  <h3 className="text-lg font-semibold">{loc.name}</h3>
-                  <p className="mt-2 text-sm text-neutral-300 line-clamp-2">
-                    {loc.description || 'No description available.'}
-                  </p>
-                  <div className="mt-3 flex items-center justify-between text-sm text-neutral-400">
-                    <span>⭐ {loc.rating ?? '—'}</span>
+                <div className="flex flex-1 flex-col p-5 text-left">
+                  <h3 className="text-lg font-semibold text-white">{loc.name}</h3>
+                  <p className="mt-2 text-sm text-neutral-300 line-clamp-3">{loc.description || 'No description available.'}</p>
+                  <div className="mt-4 flex items-center justify-between text-sm text-neutral-300">
                     <span className="text-emerald-400 font-medium">{loc.price || '—'}</span>
+                    <span>⭐ {loc.rating ?? '—'}</span>
                   </div>
+                  <Link
+                    href={`/location?id=${encodeURIComponent(loc.id)}`}
+                    className="mt-6 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 font-medium text-white transition hover:bg-emerald-500"
+                  >
+                    View details
+                  </Link>
                 </div>
               </article>
             ))}
           </div>
         )}
-      </section>
-
-      <Footer />
-    </main>
+      </Section>
+    </PageShell>
   );
 }
