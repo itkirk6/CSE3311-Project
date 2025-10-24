@@ -31,7 +31,6 @@ export default function Page() {
       try {
         // Check if API_URL is properly set
         if (!API_URL || API_URL === 'undefined') {
-          console.log('Backend URL not configured, using mock data');
           throw new Error('Backend URL not configured');
         }
 
@@ -61,40 +60,15 @@ export default function Page() {
         if (json.success) {
           console.log('Successfully fetched recommended locations:', json.data);
           setRecommended(json.data);
+          setError(null);
         } else {
           throw new Error('API returned unsuccessful response');
         }
       } catch (err) {
-        console.log('Using mock data due to error:', err.message);
-        // Set mock data for development
-        setRecommended([
-          {
-            id: '1',
-            name: 'Lake Texoma',
-            img: '/placeholder.jpg',
-            blurb: 'Perfect for fishing and water sports',
-            rating: 4.5,
-            price: 'Free'
-          },
-          {
-            id: '2',
-            name: 'Dinosaur Valley State Park',
-            img: '/placeholder.jpg',
-            blurb: 'Hike among dinosaur tracks',
-            rating: 4.7,
-            price: '$7'
-          },
-          {
-            id: '3',
-            name: 'Cedar Hill State Park',
-            img: '/placeholder.jpg',
-            blurb: 'Great for camping near Dallas',
-            rating: 4.3,
-            price: '$5'
-          }
-        ]);
-        // Don't set error state, just use mock data
-        setError(null);
+        const message = err instanceof Error ? err.message : 'Failed to fetch recommended locations';
+        console.error('Failed to fetch recommended locations:', message);
+        setRecommended([]);
+        setError(message);
       } finally {
         setLoading(false);
       }
@@ -181,15 +155,6 @@ export default function Page() {
               <p className="text-neutral-400">No featured locations found.</p>
             )}
             
-            {/* Development notice */}
-            {!loading && recommended.length > 0 && (
-              <div className="col-span-full p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  🚧 <strong>Development Mode:</strong> Showing sample data. Start the backend server to see real data.
-                </p>
-              </div>
-            )}
-
             {recommended.map((spot) => (
               <article
                 key={spot.id}
