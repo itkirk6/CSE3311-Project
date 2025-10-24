@@ -8,6 +8,7 @@ import NavBar from '@/app/components/NavBar';
 import Footer from '@/app/components/Footer';
 import PageShell from '@/app/components/PageShell';
 import MapComponent from '@/app/components/MapComponent';
+import Backplate from '@/app/components/Backplate';
 
 type Location = {
   id: string;
@@ -81,50 +82,38 @@ export default function LocationsPage() {
       <NavBar />
 
       <PageShell
-        imageSrc="/locations_screen.jpg"
-        fadeHeight="40vh"
-        withFixedHeaderOffset
+        imageSrc="/locations_screen.jpg"   // image background (no video)
+        fadeHeight="40vh"                  // smooth bottom fade
+        withFixedHeaderOffset              // start content below fixed header
       >
         <div className="flex flex-col gap-24">
-          {/* HERO with dark backplate for readability */}
+          {/* HERO with reusable Backplate for readability */}
           <section className="pt-24 sm:pt-28 md:pt-32">
             <div className="mx-auto w-full max-w-3xl">
-              <div className="relative">
-                <div
-                  className="
-                    pointer-events-none absolute inset-0
-                    rounded-2xl
-                    bg-black/45
-                    ring-1 ring-white/10
-                    backdrop-blur-[2px]
-                  "
-                  aria-hidden="true"
-                />
-                <div className="relative z-10 p-6 sm:p-8 md:p-10 text-center space-y-6">
-                  <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight">
-                    Explore New Destinations
-                  </h1>
+              <Backplate className="text-center">
+                <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight">
+                  Explore New Destinations
+                </h1>
 
-                  <form
-                    onSubmit={handleSearch}
-                    className="flex rounded-xl overflow-hidden border border-white/10 shadow-lg"
+                <form
+                  onSubmit={handleSearch}
+                  className="mt-6 flex rounded-xl overflow-hidden border border-white/10 shadow-lg"
+                >
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search locations..."
+                    className="flex-1 p-4 text-lg bg-white text-gray-900 placeholder-gray-500 focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="bg-emerald-600 hover:bg-emerald-500 px-6 font-semibold transition"
                   >
-                    <input
-                      type="text"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Search locations..."
-                      className="flex-1 p-4 text-lg bg-white text-gray-900 placeholder-gray-500 focus:outline-none"
-                    />
-                    <button
-                      type="submit"
-                      className="bg-emerald-600 hover:bg-emerald-500 px-6 font-semibold transition"
-                    >
-                      Search
-                    </button>
-                  </form>
-                </div>
-              </div>
+                    Search
+                  </button>
+                </form>
+              </Backplate>
             </div>
           </section>
 
