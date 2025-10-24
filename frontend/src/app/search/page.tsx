@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import NavBar from '@/app/components/NavBar';
 import Footer from '@/app/components/Footer';
+import Link from 'next/link';
 
 type Location = {
   id: string;
@@ -161,27 +162,39 @@ export default function SearchPage() {
 
             <div className="space-y-6">
               {results.map((loc) => (
-                <div
+                <article
                   key={loc.id}
-                  className="flex items-center bg-gray-800 rounded-lg shadow-md p-4 hover:bg-gray-750 transition-colors"
+                  className="relative group flex items-center rounded-2xl border border-gray-800 bg-gray-800/90 transition hover:border-emerald-600 overflow-hidden"
                 >
-                  <img
-                    src={loc.img || 'https://via.placeholder.com/150'}
-                    alt={loc.name}
-                    width={140}
-                    height={100}
+                  {/* Make the whole card clickable */}
+                  <Link
+                    href={`/location?id=${encodeURIComponent(loc.id)}`}
+                    className="absolute inset-0 z-10"
+                    aria-label={`View details for ${loc.name}`}
                   />
-                  <div className="ml-4 flex-1">
-                    <h2 className="text-lg font-bold">{loc.name}</h2>
+
+                  <div className="h-24 w-36 flex-shrink-0 relative overflow-hidden">
+                    <img
+                      src={loc.img || 'https://via.placeholder.com/150'}
+                      alt={loc.name}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                    {/* Optional subtle gradient for readability */}
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                  </div>
+
+                  <div className="ml-4 mr-4 my-3 flex-1">
+                    <h2 className="text-lg font-semibold">{loc.name}</h2>
                     <p className="text-sm text-gray-300 line-clamp-2">
                       {loc.blurb || 'No description available.'}
                     </p>
-                    <div className="flex items-center mt-2 space-x-4 text-sm">
+                    <div className="flex items-center mt-2 space-x-4 text-sm text-gray-400">
                       <span>⭐ {loc.rating ?? '—'}</span>
-                      <span>{loc.price || '—'}</span>
+                      <span className="text-emerald-400">{loc.price || '—'}</span>
                     </div>
                   </div>
-                </div>
+                </article>
               ))}
             </div>
 

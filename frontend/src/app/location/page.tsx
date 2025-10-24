@@ -11,9 +11,6 @@ import dynamic from 'next/dynamic';
 const MapComponent = dynamic(() => import('@/app/components/MapComponent'), { ssr: false });
 
 // --- Types ---------------------------------------------------------------
-// Designed to be permissive to match whatever Prisma shape you have.
-// Optional props are displayed with greyed-out placeholders when absent.
-
 type Img = string | { url?: string };
 
 type Review = {
@@ -31,26 +28,21 @@ type LocationDetail = {
   blurb?: string | null;
   latitude?: number | null;
   longitude?: number | null;
-  // prices / cost fields (support either)
   price?: string | null;
   cost?: string | null;
-  // address
   addressLine1?: string | null;
   addressLine2?: string | null;
   city?: string | null;
   state?: string | null;
   postalCode?: string | null;
-  // booleans / options
   petFriendly?: boolean | null;
   reservationRequired?: boolean | null;
   website?: string | null;
   seasonStart?: string | null;
   seasonEnd?: string | null;
   rating?: number | null;
-  // images: first image is used as background
   images?: Img[] | Img | null;
   secondaryImages?: Img[] | null;
-  // reviews
   reviews?: Review[] | null;
 };
 
@@ -60,11 +52,9 @@ const getFirstImage = (images?: Img[] | Img | null): string | null => {
   if (Array.isArray(images)) {
     if (images.length === 0) return null;
     const first = images[0];
-    if (typeof first === 'string') return first;
-    return first?.url ?? null;
+    return typeof first === 'string' ? first : first?.url ?? null;
   }
-  if (typeof images === 'string') return images;
-  return images?.url ?? null;
+  return typeof images === 'string' ? images : images?.url ?? null;
 };
 
 const fmt = (value: unknown): string => {
@@ -89,7 +79,6 @@ export default function LocationPage() {
   // Build the single, correct endpoint: /api/locations/id/:id
   const buildEndpoint = (locId: string) => {
     const base = API_URL?.replace(/\/$/, '') || '';
-    // If NEXT_PUBLIC_BACKEND_URL isn't set, use same-origin
     const prefix = base || '';
     return `${prefix}/api/locations/id/${encodeURIComponent(locId)}`;
   };
@@ -101,20 +90,14 @@ export default function LocationPage() {
         setLoading(false);
         return;
       }
-
       const endpoint = buildEndpoint(id);
 
       try {
         const res = await fetch(endpoint, {
           headers: { 'Content-Type': 'application/json' },
-          // Optional timeout if your runtime supports it; safe to omit if not
           signal: (AbortSignal as any).timeout?.(5000) ?? undefined,
         });
-
-        if (!res.ok) {
-          // Surface the HTTP status clearly for debugging
-          throw new Error(`HTTP ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const contentType = res.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
@@ -133,28 +116,79 @@ export default function LocationPage() {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [API_URL, id]);
 
   const bgImage = getFirstImage(data?.images ?? data?.secondaryImages ?? null);
 
-  // Smooth hero sizing like your search page
+  // Hero sizing + header measurement
   const heroRef = useRef<HTMLDivElement>(null);
   const [heroMinH, setHeroMinH] = useState(0);
+  const [navH, setNavH] = useState(0);
+  const [mapReady, setMapReady] = useState(false);
+
+
   useEffect(() => {
-    const update = () => setHeroMinH(Math.max(window.innerHeight * 0.65, 420));
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+    const updateHero = () => setHeroMinH(Math.max(window.innerHeight * 0.65, 420));
+
+    const el =
+      (document.querySelector('header') as HTMLElement | null) ||
+      (document.querySelector('#site-nav') as HTMLElement | null) ||
+      (document.querySelector('nav') as HTMLElement | null);
+
+    const measureNow = () => {
+      const h = el ? Math.ceil(el.getBoundingClientRect().height) : 64;
+      setNavH(h);
+      // expose to CSS variable so we can use it in calc()
+      document.documentElement.style.setProperty('--header-h', `${h}px`);
+    };
+
+    updateHero();
+    const raf = requestAnimationFrame(measureNow);
+    window.addEventListener('resize', updateHero);
+
+    let ro: ResizeObserver | null = null;
+    if (el && 'ResizeObserver' in window) {
+      ro = new ResizeObserver(measureNow);
+      ro.observe(el);
+    } else {
+      window.addEventListener('resize', measureNow);
+    }
+    window.addEventListener('load', measureNow);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', updateHero);
+      window.removeEventListener('load', measureNow);
+      if (ro) ro.disconnect();
+      else window.removeEventListener('resize', measureNow);
+    };
   }, []);
+
+
+  useEffect(() => {
+  if (navH > 0 && !loading) {
+    const id = requestAnimationFrame(() => setMapReady(true));
+    return () => cancelAnimationFrame(id);
+  }
+}, [navH, loading]);
+
+  // Responsive, variable-based spacing (no hard-coded px):
+  // - Title sits well below the header (10vh or 3.5rem, whichever is larger)
+  // - Body section pulls up ~80% of that to keep the layout tight
+  const heroTopPad = 'calc(var(--header-h, 64px) + max(10vh, 3.5rem))';
+  const bodyPullUp = 'calc((var(--header-h, 64px) + max(10vh, 3.5rem)) * -1)';
 
   return (
     <main className="flex min-h-screen flex-col bg-neutral-900 text-neutral-100">
       <NavBar />
 
       {/* Hero ----------------------------------------------------------- */}
-      <section ref={heroRef} className="relative w-full" style={{ minHeight: heroMinH }}>
+      <section
+        ref={heroRef}
+        className="relative w-full"
+        style={{ minHeight: heroMinH, paddingTop: heroTopPad, scrollMarginTop: heroTopPad }}
+      >
         {/* Background image or fallback tint */}
         {bgImage ? (
           <Image src={bgImage} alt={data?.name ?? 'Location'} fill priority className="object-cover opacity-60" />
@@ -166,10 +200,10 @@ export default function LocationPage() {
         <div className="relative z-10 flex h-full items-end">
           <div className="mx-auto w-full max-w-7xl px-4 pb-10 sm:px-6 lg:px-8">
             <div className="max-w-3xl">
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">
                 {loading ? 'Loading…' : data?.name ?? '—'}
               </h1>
-              <p className="mt-2 text-neutral-300">
+              <p className="mt-3 text-lg text-neutral-200">
                 {loading ? '' : data?.blurb || data?.description || '—'}
               </p>
             </div>
@@ -178,15 +212,13 @@ export default function LocationPage() {
       </section>
 
       {/* Body ----------------------------------------------------------- */}
-      <section className="relative -mt-16 z-10">
+      <section className="relative z-10" style={{ marginTop: bodyPullUp }}>
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             {/* Left: Details */}
             <article className="lg:col-span-2 rounded-2xl border border-neutral-800 bg-neutral-900/80 backdrop-blur p-6">
               {loading && <p className="text-neutral-400">Loading details…</p>}
-              {error && !loading && (
-                <p className="text-red-400">{error}</p>
-              )}
+              {error && !loading && <p className="text-red-400">{error}</p>}
 
               {!loading && !error && (
                 <div className="space-y-6">
@@ -284,7 +316,7 @@ export default function LocationPage() {
             {/* Right: Map */}
             <aside className="rounded-2xl border border-neutral-800 bg-neutral-900/80 backdrop-blur p-4">
               <h3 className="font-semibold mb-3">Map</h3>
-              {isTruthy(data?.latitude) && isTruthy(data?.longitude) ? (
+              {mapReady && isTruthy(data?.latitude) && isTruthy(data?.longitude) ? (
                 <MapComponent
                   locations={[{
                     id: data!.id,

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import NavBar from '@/app/components/NavBar';
 import Footer from '@/app/components/Footer';
 import MapComponent from '@/app/components/MapComponent';
+import Link from 'next/link';
 
 interface Location {
   id: string;
@@ -31,7 +32,6 @@ export default function LocationsPage() {
     try {
       // Check if API_URL is properly set
       if (!API_URL || API_URL === 'undefined') {
-        console.log('Backend URL not configured, using mock data');
         throw new Error('Backend URL not configured');
       }
 
@@ -143,6 +143,9 @@ export default function LocationsPage() {
               longitude: loc.longitude,
               description: loc.description,
             }))}
+            initialCenter={{ lat: 32.85, lng: -97.01 }} // ✅ DFW-ish center
+            initialZoom={8}                             // ✅ zoom for metro view (9–11 works well)
+            preferCenter                                 // ✅ force center/zoom even with many pins
           />
         </div>
       </section>
@@ -160,8 +163,15 @@ export default function LocationsPage() {
             {locations.map((loc) => (
               <article
                 key={loc.id}
-                className="rounded-2xl border border-neutral-800 bg-neutral-900 hover:border-emerald-600 transition overflow-hidden"
+                className="relative group rounded-2xl border border-neutral-800 bg-neutral-900 hover:border-emerald-600 transition overflow-hidden cursor-pointer"
               >
+                {/* Full-card clickable overlay */}
+                <Link
+                  href={`/location?id=${encodeURIComponent(loc.id)}`}
+                  className="absolute inset-0 z-10"
+                  aria-label={`View details for ${loc.name}`}
+                />
+
                 <div className="h-48 relative">
                   <img
                     src={getFirstImage(loc.images)}
@@ -170,6 +180,7 @@ export default function LocationsPage() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-neutral-900/70 to-transparent" />
                 </div>
+
                 <div className="p-5">
                   <h3 className="text-lg font-semibold">{loc.name}</h3>
                   <p className="mt-2 text-sm text-neutral-300 line-clamp-2">
