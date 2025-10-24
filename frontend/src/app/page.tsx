@@ -73,7 +73,7 @@ export default function Page() {
       {/* Page shell provides the scrolling background (no layout coupling) */}
       <PageShell videoSrc="/splash_screen.mp4" withFixedHeaderOffset>
         {/* Top intro / search — uses padding, not height */}
-        <section className="py-10 sm:py-14">
+        <section className="pt-20 sm:pt-45 pb-16">
           <div className="max-w-2xl">
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight">
               Find your next North Texas escape
@@ -110,7 +110,7 @@ export default function Page() {
         </section>
 
         {/* Featured Locations */}
-        <section className="relative py-16">
+        <section className="pt-50 pb-20">
           <h2 className="text-2xl sm:text-3xl font-bold">Featured Locations</h2>
           <p className="mt-2 text-neutral-400">Hand-picked North Texas spots to kickstart your trip.</p>
 
