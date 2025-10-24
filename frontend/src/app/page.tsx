@@ -15,7 +15,7 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   // Respect reduced motion
   useEffect(() => {
@@ -29,9 +29,7 @@ export default function Page() {
   useEffect(() => {
     const fetchRecommended = async () => {
       try {
-        // Check if API_URL is properly set
         if (!API_URL || API_URL === 'undefined') {
-          console.log('Backend URL not configured, using mock data');
           throw new Error('Backend URL not configured');
         }
 
@@ -65,36 +63,8 @@ export default function Page() {
           throw new Error('API returned unsuccessful response');
         }
       } catch (err) {
-        console.log('Using mock data due to error:', err.message);
-        // Set mock data for development
-        setRecommended([
-          {
-            id: '1',
-            name: 'Lake Texoma',
-            img: '/placeholder.jpg',
-            blurb: 'Perfect for fishing and water sports',
-            rating: 4.5,
-            price: 'Free'
-          },
-          {
-            id: '2',
-            name: 'Dinosaur Valley State Park',
-            img: '/placeholder.jpg',
-            blurb: 'Hike among dinosaur tracks',
-            rating: 4.7,
-            price: '$7'
-          },
-          {
-            id: '3',
-            name: 'Cedar Hill State Park',
-            img: '/placeholder.jpg',
-            blurb: 'Great for camping near Dallas',
-            rating: 4.3,
-            price: '$5'
-          }
-        ]);
-        // Don't set error state, just use mock data
-        setError(null);
+        console.error(err);
+        setError(err.message || 'Failed to load featured locations.');
       } finally {
         setLoading(false);
       }
@@ -181,15 +151,6 @@ export default function Page() {
               <p className="text-neutral-400">No featured locations found.</p>
             )}
             
-            {/* Development notice */}
-            {!loading && recommended.length > 0 && (
-              <div className="col-span-full p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  🚧 <strong>Development Mode:</strong> Showing sample data. Start the backend server to see real data.
-                </p>
-              </div>
-            )}
-
             {recommended.map((spot) => (
               <article
                 key={spot.id}
@@ -216,7 +177,7 @@ export default function Page() {
                   </div>
                   <button
                     className="mt-4 w-full rounded-xl bg-emerald-600 py-2.5 font-medium hover:bg-emerald-500"
-                    onClick={() => router.push(`/locations/${spot.id}`)}
+                    onClick={() => router.push(`/location?id=${spot.id}`)}
                   >
                     View Details
                   </button>
@@ -226,6 +187,7 @@ export default function Page() {
           </div>
         </div>
       </section>
+
 
       {/* Why Choose OutdoorSpot */}
       <section className="border-y border-neutral-900 bg-neutral-900 relative py-16">

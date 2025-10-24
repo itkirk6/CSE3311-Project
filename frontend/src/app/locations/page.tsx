@@ -24,7 +24,7 @@ export default function LocationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const router = useRouter();
-  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   // 🧭 Fetch all locations
   const fetchLocations = async () => {
@@ -65,42 +65,9 @@ export default function LocationsPage() {
         throw new Error('API returned unsuccessful response');
       }
     } catch (e) {
-      console.log('Using mock data due to error:', e.message);
-      // Set mock data for development
-      setLocations([
-        {
-          id: '1',
-          name: 'Yosemite National Park',
-          latitude: 37.8651,
-          longitude: -119.5383,
-          description: 'Famous for its granite cliffs, waterfalls, and giant sequoias.',
-          price: '$35',
-          rating: 4.8,
-          images: ['/placeholder.jpg']
-        },
-        {
-          id: '2', 
-          name: 'Grand Canyon National Park',
-          latitude: 36.1069,
-          longitude: -112.1129,
-          description: 'One of the world\'s most spectacular natural wonders.',
-          price: '$35',
-          rating: 4.9,
-          images: ['/placeholder.jpg']
-        },
-        {
-          id: '3',
-          name: 'Yellowstone National Park', 
-          latitude: 44.4280,
-          longitude: -110.5885,
-          description: 'America\'s first national park with geysers and wildlife.',
-          price: '$35',
-          rating: 4.7,
-          images: ['/placeholder.jpg']
-        }
-      ]);
-      // Don't set error state, just use mock data
-      setError(null);
+      console.error(e);
+      setError(e.message || 'Failed to load locations.');
+      setLocations([]);
     } finally {
       setLoading(false);
     }
