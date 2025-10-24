@@ -23,7 +23,7 @@ export default function BackgroundMedia({
     // Position only at the top, not full height; container auto-sizes to media
     <div
       aria-hidden
-      className={`pointer-events-none absolute top-0 left-0 right-0 z-0 ${className}`}
+      className={`pointer-events-none absolute top-0 left-0 right-0 z-0 overflow-hidden ${className}`}
     >
       {isImage ? (
         // Scale by width; height auto

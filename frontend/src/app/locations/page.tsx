@@ -95,7 +95,7 @@ export default function LocationsPage() {
   };
 
   return (
-    <main className="flex flex-col min-h-screen bg-neutral-900 text-neutral-100">
+    <main className="flex flex-col bg-neutral-900 text-neutral-100">
       <NavBar />
 
       {/* Hero section */}

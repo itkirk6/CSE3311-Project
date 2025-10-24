@@ -31,7 +31,7 @@ export default function PageShell({
 
   return (
     // Keep a solid page background (neutral-900)
-    <section className="relative isolate min-h-screen bg-neutral-900 text-neutral-100">
+    <section className="relative isolate min-h-screen bg-neutral-900 text-neutral-100 flex flex-col overflow-x-clip overflow-y-hidden">
       {/* Background media sits at the top and auto-sizes by width */}
       <BackgroundMedia
         imageSrc={imageSrc}
@@ -42,7 +42,7 @@ export default function PageShell({
 
       {/* Foreground content */}
       <div
-        className={`relative z-10 ${containerClassName}`}
+        className={`relative z-10 flex-1 ${containerClassName}`}
         style={{
           paddingTop: withFixedHeaderOffset ? 'var(--header-h, 64px)' : undefined,
         }}

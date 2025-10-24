@@ -34,9 +34,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
   const [libsReady, setLibsReady] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,31 +62,59 @@ const MapComponent: React.FC<MapComponentProps> = ({
           'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
       });
 
-      // Helper: recenter/fit after map is ready & when targets change
+      /**
+       * Recenter: runs only when the map is loaded AND the container has size.
+       * Disables animation on the first call to avoid race with initial layout.
+       */
       const Recenter: React.FC<{
         targets: Array<[number, number]>;
         fallback: { lat: number; lng: number };
         zoom?: number;
         padding?: number;
-      }> = ({ targets, fallback, zoom = 12, padding = 48 }) => {
+      }> = ({ targets, fallback, zoom = 12, padding = 56 }) => {
         const map = useMap();
-        useEffect(() => {
-          requestAnimationFrame(() => map.invalidateSize());
 
-          if (targets.length === 0) {
-            map.setView([fallback.lat, fallback.lng], zoom, { animate: true });
-          } else if (targets.length === 1) {
-            const [lat, lng] = targets[0];
-            map.setView([lat, lng], zoom, { animate: true });
+        useEffect(() => {
+          if (!map) return;
+
+          const run = () => {
+            // ensure container is laid out
+            requestAnimationFrame(() => {
+              try {
+                map.invalidateSize(); // recalc internal sizes
+
+                const size = map.getSize();
+                if (!size || size.x < 80 || size.y < 80) return; // still too small, bail
+
+                if (targets.length === 0) {
+                  map.setView([fallback.lat, fallback.lng], zoom, { animate: false });
+                } else if (targets.length === 1) {
+                  const [lat, lng] = targets[0];
+                  map.setView([lat, lng], zoom, { animate: false });
+                } else {
+                  const bounds = L.latLngBounds(targets);
+                  map.fitBounds(bounds, { padding: [padding, padding], animate: false });
+                }
+              } catch (e) {
+                // If layout races, a future render (or user interaction) will fix it
+                // Avoid throwing to keep the page stable
+                console.warn('Leaflet recenter skipped due to early layout:', e);
+              }
+            });
+          };
+
+          // Only run after Leaflet signals ready
+          if ((map as any)._loaded) {
+            run();
           } else {
-            const bounds = L.latLngBounds(targets);
-            map.fitBounds(bounds, { padding: [padding, padding], animate: true });
+            map.once('load', run);
           }
         }, [map, targets, fallback.lat, fallback.lng, zoom, padding]);
+
         return null;
       };
 
-      // Stable inner component — now PROPERLY receives the control props
+      // Stable inner component — receives the control props
       const LeafletMap: React.FC<MapComponentProps> = ({
         locations,
         userLocation,
@@ -105,16 +131,16 @@ const MapComponent: React.FC<MapComponentProps> = ({
             userLocation ||
             (locations[0]
               ? { lat: locations[0].latitude, lng: locations[0].longitude }
-              : { lat: 32.7357, lng: -97.1081 }),
+              : { lat: 32.7357, lng: -97.1081 }), // DFW-ish fallback
           [initialCenter, userLocation, locations]
         );
 
-        const mapKey = `${center.lat},${center.lng},${zoom}`; // keep instance stable per view
-        const [ready, setReady] = React.useState(false);
+        const mapKey = `${center.lat},${center.lng},${zoom}`;
 
         // Size gate: only mount Leaflet when wrapper has real size
         const wrapRef = React.useRef<HTMLDivElement>(null);
         const [hasSize, setHasSize] = React.useState(false);
+        const [ready, setReady] = React.useState(false);
 
         React.useLayoutEffect(() => {
           const el = wrapRef.current;
@@ -136,7 +162,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
           };
         }, []);
 
-        // Prepare targets from markers (used only if NOT preferCenter)
+        // Targets derived from markers (used unless preferCenter)
         const targets = useMemo<[number, number][]>(() => {
           if (!locations || locations.length === 0) return [];
           return locations.map((l) => [l.latitude, l.longitude]);
@@ -152,15 +178,17 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 key={mapKey}
                 center={[center.lat, center.lng]}
                 zoom={zoom}
-                scrollWheelZoom={true}
-                doubleClickZoom={true}
+                scrollWheelZoom
+                doubleClickZoom
                 preferCanvas
                 style={{ height: '100%', width: '100%' }}
-                whenReady={() => setReady(true)}
+                whenReady={() => {
+                  // Give layout one frame before we mark ready
+                  requestAnimationFrame(() => setReady(true));
+                }}
               >
                 {ready && (
                   <>
-                    {/* 🔑 Use preferCenter + initialZoom here */}
                     <Recenter
                       targets={preferCenter ? [] : targets}
                       fallback={center}
@@ -234,7 +262,6 @@ const MapComponent: React.FC<MapComponentProps> = ({
     );
   }
 
-  // ✅ PASS THE CONTROL PROPS DOWN
   return (
     <MapContent
       locations={locations}
