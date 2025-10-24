@@ -80,17 +80,23 @@ export default function Page() {
   };
 
   return (
-    <PageShell
-      mainClassName="space-y-24 pb-24"
-      backgroundMedia={{
-        type: 'video',
-        src: '/splash_screen.mp4',
-        className: 'pointer-events-none select-none',
-        videoRef,
-      }}
-      overlayClassName="from-neutral-950/60 via-neutral-950/70 to-neutral-950"
-    >
+    <PageShell mainClassName="space-y-24 pb-24">
       <HeroSection
+        background={
+          <video
+            ref={videoRef}
+            className="h-full w-full object-cover pointer-events-none select-none"
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="metadata"
+            disablePictureInPicture
+            controls={false}
+            aria-hidden="true"
+            src="/splash_screen.mp4"
+          />
+        }
         className="items-center py-12"
         overlayClassName="from-neutral-950/40 via-neutral-950/20 to-neutral-900"
         heightClassName="min-h-[540px] h-[85vh]"

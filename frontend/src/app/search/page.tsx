@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import HeroSection from '@/app/components/HeroSection';
@@ -68,17 +69,9 @@ export default function SearchPage() {
   }, [initialQuery]);
 
   return (
-    <PageShell
-      mainClassName="space-y-16 pb-24"
-      backgroundMedia={{
-        type: 'image',
-        src: '/search_screen.jpg',
-        alt: 'Search background',
-        className: 'object-cover',
-        loading: 'eager',
-      }}
-    >
+    <PageShell mainClassName="space-y-16 pb-24">
       <HeroSection
+        background={<Image src="/search_screen.jpg" alt="Search background" fill priority className="object-cover" />}
         className="items-center py-12"
         overlayClassName="from-neutral-950/60 via-neutral-950/30 to-neutral-900"
         heightClassName="min-h-[460px] h-[70vh]"
