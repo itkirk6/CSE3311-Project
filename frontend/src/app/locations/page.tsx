@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import HeroSection from '@/app/components/HeroSection';
@@ -89,17 +90,9 @@ export default function LocationsPage() {
   };
 
   return (
-    <PageShell
-      mainClassName="space-y-24 pb-24"
-      backgroundMedia={{
-        type: 'image',
-        src: '/locations_screen.jpg',
-        alt: 'Locations background',
-        className: 'object-cover',
-        loading: 'eager',
-      }}
-    >
+    <PageShell mainClassName="space-y-24 pb-24">
       <HeroSection
+        background={<Image src="/locations_screen.jpg" alt="Locations background" fill priority className="object-cover" />}
         className="items-start pt-24"
         overlayClassName="from-neutral-950/60 via-neutral-950/40 to-neutral-900"
         heightClassName="min-h-[420px] h-[70vh]"

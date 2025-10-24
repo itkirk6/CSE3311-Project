@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import HeroSection from '@/app/components/HeroSection';
@@ -117,25 +118,15 @@ export default function LocationPage() {
   const bgImage = getFirstImage(data?.images ?? data?.secondaryImages ?? null);
 
   return (
-    <PageShell
-      mainClassName="space-y-16 pb-24"
-      backgroundMedia={
-        bgImage
-          ? {
-              type: 'image',
-              src: bgImage,
-              alt: data?.name ?? 'Location background',
-              className: 'object-cover',
-              loading: 'eager',
-            }
-          : {
-              type: 'solid',
-              className: 'bg-neutral-900',
-            }
-      }
-      overlayClassName="from-neutral-950/70 via-neutral-950/80 to-neutral-950"
-    >
+    <PageShell mainClassName="space-y-16 pb-24">
       <HeroSection
+        background={
+          bgImage ? (
+            <Image src={bgImage} alt={data?.name ?? 'Location'} fill priority className="object-cover" />
+          ) : (
+            <div className="h-full w-full bg-neutral-800" />
+          )
+        }
         className="items-end pb-12"
         overlayClassName="from-neutral-950/60 via-neutral-950/40 to-neutral-900"
         heightClassName="min-h-[420px] h-[70vh]"
