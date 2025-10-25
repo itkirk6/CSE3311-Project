@@ -42,18 +42,24 @@ type LocationDetail = {
   seasonEnd?: string | null;
   rating?: number | null;
   images?: Img[] | Img | null;
-  secondaryImages?: Img[] | null;
   reviews?: Review[] | null;
 };
 
 // --- Helpers ------------------------------------------------------------
-const getFirstImage = (images?: Img[] | Img | null): string | null => {
-  if (!images) return null;
+const normalizeImages = (images?: Img[] | Img | null): string[] => {
+  if (!images) return [];
   if (Array.isArray(images)) {
-    const first = images[0];
-    return typeof first === 'string' ? first : first?.url ?? null;
+    return images
+      .map((i) => (typeof i === 'string' ? i : i?.url || ''))
+      .filter(Boolean);
   }
-  return typeof images === 'string' ? images : images?.url ?? null;
+  const one = typeof images === 'string' ? images : images?.url || '';
+  return one ? [one] : [];
+};
+
+const getFirstImage = (images?: Img[] | Img | null): string | null => {
+  const arr = normalizeImages(images);
+  return arr[0] ?? null;
 };
 
 const fmt = (value: unknown): string => {
@@ -106,9 +112,11 @@ export default function LocationPage() {
       }
 
       try {
-        const res = await fetchWithTimeout(buildEndpoint(id), {
-          headers: { 'Content-Type': 'application/json' },
-        }, 6000);
+        const res = await fetchWithTimeout(
+          buildEndpoint(id),
+          { headers: { 'Content-Type': 'application/json' } },
+          6000
+        );
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const ct = res.headers.get('content-type') || '';
@@ -129,7 +137,15 @@ export default function LocationPage() {
     run();
   }, [API_URL, id]);
 
-  const bgImage = getFirstImage(data?.images ?? data?.secondaryImages ?? null) || undefined;
+  // Background image = first of images (if any)
+  const bgImage = getFirstImage(data?.images ?? null) || undefined;
+
+  // Gallery always = images after the first
+  const gallery: string[] = (() => {
+    if (!data) return [];
+    const all = normalizeImages(data.images);
+    return all.slice(1);
+  })();
 
   return (
     <main className="text-neutral-100">
@@ -206,21 +222,25 @@ export default function LocationPage() {
                       )}
                     </div>
 
-                    {/* Secondary images */}
+                    {/* Gallery (images after the first) */}
                     <div>
                       <h3 className="font-semibold mb-3">Gallery</h3>
-                      {data.secondaryImages && data.secondaryImages.length > 0 ? (
+                      {gallery.length > 0 ? (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                          {data.secondaryImages.map((img, i) => {
-                            const src = typeof img === 'string' ? img : img?.url || '';
-                            if (!src) return null;
-                            return (
-                              <div key={i} className="relative aspect-[4/3] overflow-hidden rounded-xl border border-neutral-800">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={src} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" loading="lazy" />
-                              </div>
-                            );
-                          })}
+                          {gallery.map((src, i) => (
+                            <div
+                              key={i}
+                              className="relative aspect-[4/3] overflow-hidden rounded-xl border border-neutral-800"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={src}
+                                alt={`Photo ${i + 1}`}
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                              />
+                            </div>
+                          ))}
                         </div>
                       ) : (
                         <p className="text-neutral-500">—</p>

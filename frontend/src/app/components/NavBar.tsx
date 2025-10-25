@@ -22,11 +22,7 @@ export default function NavBar() {
                   Locations
                 </Link>
               </li>
-              <li>
-                <Link href="/search" className="hover:text-white transition">
-                  Search
-                </Link>
-              </li>
+              {/* Removed Search Link */}
               <li>
                 <Link href="/about" className="hover:text-white transition">
                   About
