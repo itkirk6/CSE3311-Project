@@ -36,10 +36,14 @@ const imageDirectories = [
   path.resolve(process.cwd(), '../frontend/public/images'),
 ].filter((dir, index, directories) => directories.indexOf(dir) === index);
 
-const imagesDirectory = imageDirectories.find((dir) => fs.existsSync(dir));
+const uniqueExistingImageDirectories = candidateImageDirectories
+  .filter((dir, index, directories) => directories.indexOf(dir) === index)
+  .filter((dir) => fs.existsSync(dir));
 
-if (imagesDirectory) {
-  app.use('/images', express.static(imagesDirectory));
+if (uniqueExistingImageDirectories.length > 0) {
+  uniqueExistingImageDirectories.forEach((dir) => {
+    app.use('/images', express.static(dir));
+  });
 } else {
   console.warn('⚠️  No images directory found for static serving.');
 }
