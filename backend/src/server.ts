@@ -29,6 +29,7 @@ app.use(bodyParser.json());
 // ordered by most to least specific expected locations.
 const imageDirectories = [
   path.resolve(__dirname, '../public/images'),
+  path.resolve(__dirname, '../public'),
   path.resolve(__dirname, '../../images'),
   path.resolve(__dirname, '../../frontend/public/images'),
   path.resolve(process.cwd(), 'public/images'),
@@ -46,6 +47,8 @@ if (uniqueExistingImageDirectories.length > 0) {
   });
 } else {
   console.warn('⚠️  No images directory found for static serving.');
+} else {
+  console.log('📸 Serving /images from directories:', mountedImageDirectories);
 }
 
 // Routes
