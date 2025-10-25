@@ -8,6 +8,7 @@ import NavBar from '@/app/components/NavBar';
 import Footer from '@/app/components/Footer';
 import PageShell from '@/app/components/PageShell';
 import Backplate from '@/app/components/Backplate';
+import { buildImageUrl } from '@/app/utils/media';
 
 type Location = {
   id: string;
@@ -130,7 +131,7 @@ export default function SearchPage() {
 
                     <div className="h-24 w-36 flex-shrink-0 relative overflow-hidden">
                       <img
-                        src={loc.img || 'https://via.placeholder.com/150'}
+                        src={buildImageUrl(loc.img) || 'https://via.placeholder.com/150'}
                         alt={loc.name}
                         className="h-full w-full object-cover"
                         loading="lazy"

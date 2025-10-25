@@ -9,6 +9,7 @@ import Footer from '@/app/components/Footer';
 import PageShell from '@/app/components/PageShell';
 import MapComponent from '@/app/components/MapComponent';
 import Backplate from '@/app/components/Backplate';
+import { buildImageUrl } from '@/app/utils/media';
 
 type Location = {
   id: string;
@@ -68,13 +69,28 @@ export default function LocationsPage() {
   };
 
   const getFirstImage = (images: any): string => {
-    if (!images) return '/placeholder.jpg';
-    if (Array.isArray(images)) {
-      if (typeof images[0] === 'string') return images[0];
-      if (images[0]?.url) return images[0].url;
+    let candidate: string | undefined;
+
+    if (!images) {
+      candidate = undefined;
+    } else if (typeof images === 'string') {
+      candidate = images;
+    } else if (Array.isArray(images)) {
+      for (const item of images) {
+        if (typeof item === 'string' && item) {
+          candidate = item;
+          break;
+        }
+        if (item && typeof item === 'object' && typeof item.url === 'string' && item.url) {
+          candidate = item.url;
+          break;
+        }
+      }
+    } else if (typeof images === 'object' && typeof images.url === 'string') {
+      candidate = images.url;
     }
-    if (typeof images === 'object' && images.url) return images.url;
-    return '/placeholder.jpg';
+
+    return buildImageUrl(candidate) || 'https://via.placeholder.com/600x400?text=No+Image';
   };
 
   return (

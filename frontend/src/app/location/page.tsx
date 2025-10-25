@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import NavBar from '@/app/components/NavBar';
 import Footer from '@/app/components/Footer';
 import PageShell from '@/app/components/PageShell';
+import { buildImageUrl } from '@/app/utils/media';
 import WeatherForecast from '@/app/components/WeatherForecast';
 import GalleryLightbox from '@/app/components/GalleryLightbox';
 
@@ -205,8 +206,11 @@ export default function LocationPage() {
 
   // Background image = first of images (if any), Gallery = rest
   const allImages = normalizeImagesFromJson(data?.images ?? null);
-  const bgImage = allImages[0] || undefined;
-  const gallery = allImages.slice(1);
+  const resolvedImages = allImages
+    .map((img) => buildImageUrl(img))
+    .filter((img): img is string => Boolean(img));
+  const bgImage = resolvedImages[0];
+  const gallery = resolvedImages.slice(1);
 
   // ----- Robust rating for display -----
   const parsedDbRating =

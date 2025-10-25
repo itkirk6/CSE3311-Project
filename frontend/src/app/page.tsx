@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import PageShell from '@/app/components/PageShell';
+import { buildImageUrl } from '@/app/utils/media';
 
 export default function Page() {
   const router = useRouter();
@@ -128,7 +129,7 @@ export default function Page() {
               >
                 <div className="relative h-48 overflow-hidden">
                   <img
-                    src={spot.img || 'https://via.placeholder.com/600x400?text=No+Image'}
+                    src={buildImageUrl(spot.img) || 'https://via.placeholder.com/600x400?text=No+Image'}
                     alt={spot.name}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     loading="lazy"
