@@ -9,7 +9,6 @@ import PageShell from '@/app/components/PageShell';
 export default function Page() {
   const router = useRouter();
 
-  const [navQuery, setNavQuery] = useState('');
   const [heroQuery, setHeroQuery] = useState('');
 
   const [recommended, setRecommended] = useState<any[]>([]);
@@ -68,7 +67,7 @@ export default function Page() {
   return (
     <main className="min-h-screen text-neutral-100">
       {/* Fixed header */}
-      <NavBar navQuery={navQuery} setNavQuery={setNavQuery} submitSearch={submitSearch} />
+      <NavBar />
 
       {/* Page shell provides the scrolling background (no layout coupling) */}
       <PageShell videoSrc="/splash_screen.mp4" withFixedHeaderOffset>
