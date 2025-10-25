@@ -24,15 +24,26 @@ app.use(morgan('dev'));
 app.use(bodyParser.json());
 
 // Static assets
-const imageDirectories = [
+// Allow the server to serve images regardless of whether we're running the
+// TypeScript sources directly or from the compiled dist/ folder. The list is
+// ordered by most to least specific expected locations.
+const candidateImageDirectories = [
   path.resolve(__dirname, '../public/images'),
   path.resolve(__dirname, '../../images'),
+  path.resolve(__dirname, '../../frontend/public/images'),
+  path.resolve(process.cwd(), 'public/images'),
+  path.resolve(process.cwd(), '../public/images'),
+  path.resolve(process.cwd(), '../frontend/public/images'),
 ];
 
-const imagesDirectory = imageDirectories.find((dir) => fs.existsSync(dir));
+const uniqueExistingImageDirectories = candidateImageDirectories
+  .filter((dir, index, directories) => directories.indexOf(dir) === index)
+  .filter((dir) => fs.existsSync(dir));
 
-if (imagesDirectory) {
-  app.use('/images', express.static(imagesDirectory));
+if (uniqueExistingImageDirectories.length > 0) {
+  uniqueExistingImageDirectories.forEach((dir) => {
+    app.use('/images', express.static(dir));
+  });
 } else {
   console.warn('⚠️  No images directory found for static serving.');
 }
