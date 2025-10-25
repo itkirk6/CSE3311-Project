@@ -9,7 +9,7 @@ import Backplate from '@/app/components/Backplate';
 
 const teamMembers = [
   {
-    name: 'Ian Kirk',
+    name: 'Ivan Kirk',
     handle: '@itkirk6',
     github: 'https://github.com/itkirk6',
     blurb:
@@ -23,7 +23,7 @@ const teamMembers = [
       'UI tinkerer focused on human-centered flows so every camper can find the perfect getaway without friction.',
   },
   {
-    name: 'Devon White',
+    name: 'Devon Wingfield',
     handle: '@devw54',
     github: 'https://github.com/devw54',
     blurb:
