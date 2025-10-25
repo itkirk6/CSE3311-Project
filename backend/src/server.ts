@@ -24,17 +24,43 @@ app.use(morgan('dev'));
 app.use(bodyParser.json());
 
 // Static assets
-const imageDirectories = [
+// Allow the server to serve images regardless of whether we're running the
+// TypeScript sources directly or from the compiled dist/ folder. The list is
+// ordered by most to least specific expected locations.
+const candidateImageDirectories: string[] = [
   path.resolve(__dirname, '../public/images'),
+  path.resolve(__dirname, '../public'),
   path.resolve(__dirname, '../../images'),
+  path.resolve(__dirname, '../../public/images'),
+  path.resolve(__dirname, '../../public'),
+  path.resolve(__dirname, '../../frontend/public/images'),
+  path.resolve(__dirname, '../../frontend/public'),
+  path.resolve(process.cwd(), 'public/images'),
+  path.resolve(process.cwd(), 'public'),
+  path.resolve(process.cwd(), '../public/images'),
+  path.resolve(process.cwd(), '../public'),
+  path.resolve(process.cwd(), '../frontend/public/images'),
+  path.resolve(process.cwd(), '../frontend/public'),
 ];
 
-const imagesDirectory = imageDirectories.find((dir) => fs.existsSync(dir));
+const mountedImageDirectories: string[] = [];
+const visitedDirectories = new Set<string>();
 
-if (imagesDirectory) {
-  app.use('/images', express.static(imagesDirectory));
-} else {
+candidateImageDirectories.forEach((dir) => {
+  const normalizedDir = path.normalize(dir);
+  if (visitedDirectories.has(normalizedDir) || !fs.existsSync(normalizedDir)) {
+    return;
+  }
+
+  visitedDirectories.add(normalizedDir);
+  mountedImageDirectories.push(normalizedDir);
+  app.use('/images', express.static(normalizedDir));
+});
+
+if (mountedImageDirectories.length === 0) {
   console.warn('⚠️  No images directory found for static serving.');
+} else {
+  console.log('📸 Serving /images from directories:', mountedImageDirectories);
 }
 
 // Routes
