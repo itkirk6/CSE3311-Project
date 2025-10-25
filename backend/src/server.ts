@@ -3,6 +3,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
+import path from 'path';
 
 import locationsRouter from './routes/locations';
 import reviewsRouter from './routes/reviews';
@@ -20,6 +21,10 @@ const app = express();
 app.use(cors());
 app.use(morgan('dev'));
 app.use(bodyParser.json());
+
+// Static assets
+const imagesDirectory = path.resolve(__dirname, '../../images');
+app.use('/images', express.static(imagesDirectory));
 
 // Routes
 app.use('/api/locations', locationsRouter);
