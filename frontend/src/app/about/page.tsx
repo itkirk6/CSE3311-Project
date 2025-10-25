@@ -44,10 +44,11 @@ export default function AboutPage() {
       <NavBar />
 
       <PageShell imageSrc="/search_screen.jpg" fadeHeight="45vh" withFixedHeaderOffset>
-        <div className="flex flex-col gap-20 pb-24">
-          <section className="pt-24 sm:pt-28 md:pt-32">
-            <div className="mx-auto max-w-3xl">
-              <Backplate>
+        <div className="flex min-h-[calc(100vh-var(--header-h,64px))] flex-col">
+          <div className="flex flex-col gap-20 pb-24 flex-1">
+            <section className="pt-24 sm:pt-28 md:pt-32">
+              <div className="mx-auto max-w-3xl">
+                <Backplate>
                 <p className="text-sm uppercase tracking-[0.3em] text-emerald-300">About OutdoorSpot</p>
                 <h1 className="mt-4 text-4xl font-extrabold sm:text-5xl">Built by Mavericks for fellow explorers</h1>
                 <p className="mt-6 text-lg text-neutral-200">
@@ -139,6 +140,7 @@ export default function AboutPage() {
               a few legendary campfire stories. Thanks for taking the journey with us.
             </p>
           </section>
+          </div>
 
           <Footer />
         </div>
