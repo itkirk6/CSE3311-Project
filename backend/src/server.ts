@@ -35,20 +35,21 @@ const imageDirectories = [
   path.resolve(process.cwd(), 'public/images'),
   path.resolve(process.cwd(), '../public/images'),
   path.resolve(process.cwd(), '../frontend/public/images'),
-].filter((dir, index, directories) => directories.indexOf(dir) === index);
+];
 
-const uniqueExistingImageDirectories = candidateImageDirectories
-  .filter((dir, index, directories) => directories.indexOf(dir) === index)
-  .filter((dir) => fs.existsSync(dir));
+const uniqueImageDirectories = imageDirectories.filter(
+  (dir, index, directories) => directories.indexOf(dir) === index
+);
 
-if (uniqueExistingImageDirectories.length > 0) {
-  uniqueExistingImageDirectories.forEach((dir) => {
+const existingImageDirectories = uniqueImageDirectories.filter((dir) => fs.existsSync(dir));
+
+if (existingImageDirectories.length > 0) {
+  existingImageDirectories.forEach((dir) => {
     app.use('/images', express.static(dir));
   });
+  console.log('📸 Serving /images from directories:', existingImageDirectories);
 } else {
   console.warn('⚠️  No images directory found for static serving.');
-} else {
-  console.log('📸 Serving /images from directories:', mountedImageDirectories);
 }
 
 // Routes
