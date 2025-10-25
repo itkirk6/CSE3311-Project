@@ -2,10 +2,14 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/context/AuthContext';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -17,6 +21,9 @@ export default function RegisterPage() {
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const submitButtonText = loading ? 'Creating your account…' : 'Join OutdoorSpot as UTA Student';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -31,6 +38,8 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setServerError(null);
+    setSuccessMessage(null);
 
     const newErrors: Record<string, string> = {};
 
@@ -65,9 +74,8 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      // Check if BASE_URL is properly set
       if (!BASE_URL || BASE_URL === 'undefined') {
-        throw new Error('Backend URL not configured');
+        throw new Error('Backend URL not configured. Please contact support.');
       }
 
       const response = await fetch(`${BASE_URL}/api/auth/register`, {
@@ -76,32 +84,59 @@ export default function RegisterPage() {
         body: JSON.stringify(formData),
       });
 
-      // Check if response is ok
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      // Check if response is JSON
       const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Response is not JSON');
+      const isJson = contentType && contentType.includes('application/json');
+      const data = isJson ? await response.json() : null;
+
+      if (!response.ok) {
+        const message = data?.message || `Unable to complete registration (status ${response.status}).`;
+        throw new Error(message);
       }
 
-      const data = await response.json();
+      if (!data?.success || !data?.data) {
+        throw new Error('Unexpected response from the server.');
+      }
 
-      if (data.success) {
-        localStorage.setItem(
-          'authState',
-          JSON.stringify({ isLoggedIn: true, user: data.data.user, token: data.data.token })
-        );
-        alert(`Registration successful! Welcome to OutdoorSpot, ${formData.firstName}!`);
-        window.location.href = '/';
-      } else {
-        alert(`Registration failed: ${data.message}`);
+      let autoLoginSucceeded = false;
+
+      try {
+        const loginResponse = await fetch(`${BASE_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: formData.email, password: formData.password }),
+        });
+
+        const loginContentType = loginResponse.headers.get('content-type');
+        const loginIsJson = loginContentType && loginContentType.includes('application/json');
+        const loginData = loginIsJson ? await loginResponse.json() : null;
+
+        if (
+          loginResponse.ok &&
+          loginData?.success &&
+          loginData?.data?.user &&
+          loginData?.data?.token
+        ) {
+          await login({ user: loginData.data.user, token: loginData.data.token });
+          autoLoginSucceeded = true;
+          router.push('/');
+          router.refresh();
+        }
+      } catch (autoLoginError) {
+        console.warn('Auto-login after registration failed:', autoLoginError);
+      }
+
+      if (!autoLoginSucceeded) {
+        setSuccessMessage('Registration successful! You can now sign in with your new credentials.');
+        setFormData((prev) => ({
+          ...prev,
+          password: '',
+          confirmPassword: '',
+        }));
       }
     } catch (error) {
       console.error('Registration error:', error);
-      alert('Registration failed. Please try again.');
+      const message = error instanceof Error ? error.message : 'Registration failed. Please try again.';
+      setServerError(message);
     } finally {
       setLoading(false);
     }
@@ -283,14 +318,28 @@ export default function RegisterPage() {
               </label>
             </div>
 
+            {serverError && (
+              <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4" role="alert" aria-live="assertive">
+                <p className="text-sm text-red-700">{serverError}</p>
+              </div>
+            )}
+
+            {successMessage && (
+              <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4" role="status" aria-live="polite">
+                <p className="text-sm text-emerald-700">{successMessage}</p>
+              </div>
+            )}
+
             {/* Submit */}
             <div className="mt-6">
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
+                className={`group relative flex w-full justify-center rounded-lg border border-transparent py-2 px-4 text-sm font-medium text-white transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  loading ? 'cursor-not-allowed bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
+                }`}
               >
-                {loading ? 'Creating account...' : 'Join OutdoorSpot as UTA Student'}
+                {submitButtonText}
               </button>
             </div>
 
