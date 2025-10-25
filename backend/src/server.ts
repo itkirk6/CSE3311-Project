@@ -27,14 +27,14 @@ app.use(bodyParser.json());
 // Allow the server to serve images regardless of whether we're running the
 // TypeScript sources directly or from the compiled dist/ folder. The list is
 // ordered by most to least specific expected locations.
-const candidateImageDirectories = [
+const imageDirectories = [
   path.resolve(__dirname, '../public/images'),
   path.resolve(__dirname, '../../images'),
   path.resolve(__dirname, '../../frontend/public/images'),
   path.resolve(process.cwd(), 'public/images'),
   path.resolve(process.cwd(), '../public/images'),
   path.resolve(process.cwd(), '../frontend/public/images'),
-];
+].filter((dir, index, directories) => directories.indexOf(dir) === index);
 
 const uniqueExistingImageDirectories = candidateImageDirectories
   .filter((dir, index, directories) => directories.indexOf(dir) === index)
