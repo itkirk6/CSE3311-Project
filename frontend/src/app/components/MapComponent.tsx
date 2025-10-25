@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import React, { useEffect, useMemo, useRef } from 'react';
+import L, { Map as LeafletMap, Marker as LeafletMarker } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 
 type Location = {
   id: string;
@@ -34,40 +33,6 @@ L.Icon.Default.mergeOptions({
     'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-function Recenter({
-  targets,
-  fallback,
-  zoom = 12,
-  padding = 56,
-}: {
-  targets: [number, number][];
-  fallback: { lat: number; lng: number };
-  zoom?: number;
-  padding?: number;
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    // Run after mount / on targets change
-    if (!map) return;
-
-    if (!targets || targets.length === 0) {
-      map.setView([fallback.lat, fallback.lng], zoom, { animate: false });
-      return;
-    }
-    if (targets.length === 1) {
-      const [lat, lng] = targets[0];
-      map.setView([lat, lng], zoom, { animate: false });
-      return;
-    }
-
-    const bounds = L.latLngBounds(targets);
-    map.fitBounds(bounds, { padding: [padding, padding], animate: false });
-  }, [map, targets, fallback.lat, fallback.lng, zoom, padding]);
-
-  return null;
-}
-
 const MapComponent: React.FC<Props> = ({
   locations,
   userLocation,
@@ -76,71 +41,146 @@ const MapComponent: React.FC<Props> = ({
   initialZoom = 12,
   preferCenter,
 }) => {
-  const center = useMemo(
-    () =>
-      initialCenter ||
-      (locations[0]
-        ? { lat: locations[0].latitude, lng: locations[0].longitude }
-        : { lat: 32.7357, lng: -97.1081 }), // DFW-ish fallback
-    [initialCenter, locations]
-  );
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
+  const markersRef = useRef<LeafletMarker[]>([]);
 
-  const targets = useMemo<[number, number][]>(() => {
-    if (!locations || locations.length === 0) return [];
-    return locations.map((l) => [l.latitude, l.longitude]);
-  }, [locations]);
+  const fallbackCenter = useMemo(() => ({ lat: 32.7357, lng: -97.1081 }), []);
+  const firstCenter = useMemo(() => {
+    if (initialCenter) return initialCenter;
+    if (locations && locations[0])
+      return { lat: locations[0].latitude, lng: locations[0].longitude };
+    return fallbackCenter;
+  }, [initialCenter, locations, fallbackCenter]);
+
+  // Create the map once
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+
+    // Create fresh Leaflet map
+    const map = L.map(containerRef.current, {
+      center: [firstCenter.lat, firstCenter.lng],
+      zoom: initialZoom,
+      preferCanvas: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+    });
+
+    // Tile layer
+    const tiles = L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        attribution:
+          '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors',
+      }
+    );
+    tiles.addTo(map);
+
+    mapRef.current = map;
+
+    // Clean up on unmount (important for Fast Refresh)
+    return () => {
+      try {
+        map.remove();
+      } catch {
+        /* ignore */
+      }
+      mapRef.current = null;
+      // also clear markers cache
+      markersRef.current.forEach((m) => {
+        try {
+          m.remove();
+        } catch {}
+      });
+      markersRef.current = [];
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // do not depend on props — we update below
+
+  // Add/update markers + view whenever locations/userLocation change
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // remove existing markers
+    markersRef.current.forEach((m) => {
+      try {
+        m.remove();
+      } catch {}
+    });
+    markersRef.current = [];
+
+    // add user location marker if present
+    if (userLocation) {
+      const um = L.marker([userLocation.lat, userLocation.lng]).bindPopup(
+        '<div style="color:#111">Your Location</div>'
+      );
+      um.addTo(map);
+      markersRef.current.push(um);
+    }
+
+    // add location markers
+    locations.forEach((loc) => {
+      const m = L.marker([loc.latitude, loc.longitude]);
+      const html =
+        `<div style="color:#111">` +
+        `<a href="/location?id=${encodeURIComponent(
+          loc.id
+        )}" style="font-weight:600;color:#059669;text-decoration:none;">${loc.name}</a>` +
+        (loc.description
+          ? `<p style="margin:.25rem 0 0;color:#4b5563;font-size:.85rem;">${loc.description}</p>`
+          : '') +
+        `</div>`;
+      m.bindPopup(html);
+      if (onSelect) {
+        m.on('click', () => onSelect(loc));
+      }
+      m.addTo(map);
+      markersRef.current.push(m);
+    });
+
+    // set view
+    if (!preferCenter && locations.length > 1) {
+      const bounds = L.latLngBounds(
+        locations.map((l) => [l.latitude, l.longitude]) as [number, number][]
+      );
+      if (userLocation) bounds.extend([userLocation.lat, userLocation.lng]);
+      map.fitBounds(bounds, { padding: [56, 56] });
+    } else if (preferCenter) {
+      const c = initialCenter ?? firstCenter;
+      map.setView([c.lat, c.lng], initialZoom, { animate: false });
+    } else if (locations.length === 1) {
+      const c = { lat: locations[0].latitude, lng: locations[0].longitude };
+      map.setView([c.lat, c.lng], initialZoom, { animate: false });
+    } else {
+      // fallback
+      map.setView([firstCenter.lat, firstCenter.lng], initialZoom, {
+        animate: false,
+      });
+    }
+
+    // Invalidate size after layout settles (helps inside blurred card)
+    setTimeout(() => {
+      try {
+        map.invalidateSize();
+      } catch {}
+    }, 0);
+  }, [
+    locations,
+    userLocation?.lat,
+    userLocation?.lng,
+    preferCenter,
+    initialCenter?.lat,
+    initialCenter?.lng,
+    initialZoom,
+    firstCenter.lat,
+    firstCenter.lng,
+    onSelect,
+  ]);
 
   return (
     <div className="w-full h-96 rounded-2xl overflow-hidden border border-neutral-800 shadow-lg">
-      <MapContainer
-        center={[center.lat, center.lng]}
-        zoom={initialZoom}
-        scrollWheelZoom
-        doubleClickZoom
-        preferCanvas
-        style={{ height: '100%', width: '100%' }}
-      >
-        {/* Recenter AFTER the map exists */}
-        <Recenter
-          targets={preferCenter ? [] : targets}
-          fallback={center}
-          zoom={initialZoom}
-          padding={56}
-        />
-
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
-        />
-
-        {userLocation && (
-          <Marker position={[userLocation.lat, userLocation.lng]}>
-            <Popup>Your Location</Popup>
-          </Marker>
-        )}
-
-        {locations.map((loc) => (
-          <Marker
-            key={loc.id}
-            position={[loc.latitude, loc.longitude]}
-            eventHandlers={{ click: () => onSelect?.(loc) }}
-          >
-            <Popup>
-              <div className="text-black">
-                <a
-                  href={`/location?id=${encodeURIComponent(loc.id)}`}
-                  className="font-semibold text-lg text-emerald-600 hover:underline"
-                >
-                  {loc.name}
-                </a>
-                {loc.description && (
-                  <p className="text-gray-600 text-sm mt-1">{loc.description}</p>
-                )}
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+      <div ref={containerRef} className="w-full h-96" />
     </div>
   );
 };

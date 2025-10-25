@@ -312,11 +312,18 @@ async function main() {
           state: loc.location,
           country: 'US',
           amenities: loc.amenities,
-          costPerNight: loc.price,
+          costPerNight: loc.price,           // Prisma Decimal is fine with a number here
           images: loc.images,
           verified: true,
           isActive: loc.availability,
+          rating: loc.rating ?? null,        // <-- set it!
         },
+      });
+    } else if (location.rating == null && loc.rating != null) {
+      // keep seed idempotent but fill in missing rating
+      await prisma.location.update({
+        where: { id: location.id },
+        data: { rating: loc.rating },
       });
     }
 

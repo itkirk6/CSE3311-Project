@@ -3,20 +3,23 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
+
 import NavBar from '@/app/components/NavBar';
 import Footer from '@/app/components/Footer';
 import PageShell from '@/app/components/PageShell';
+import WeatherForecast from '@/app/components/WeatherForecast';
+import GalleryLightbox from '@/app/components/GalleryLightbox';
 
 // Lazy-load MapComponent to avoid SSR issues
 const MapComponent = dynamic(() => import('@/app/components/MapComponent'), { ssr: false });
 
-// --- Types ---------------------------------------------------------------
-type Img = string | { url?: string };
+// ---------------- Types (mirror Prisma / API) ----------------
+type Json = any;
 
 type Review = {
   id?: string;
   author?: string;
-  rating?: number | null;
+  rating?: number | string | null; // <-- allow string too
   comment?: string | null;
   createdAt?: string | Date;
 };
@@ -25,52 +28,102 @@ type LocationDetail = {
   id: string;
   name: string;
   description?: string | null;
-  blurb?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  price?: string | null;
-  cost?: string | null;
-  addressLine1?: string | null;
-  addressLine2?: string | null;
+  locationType: string;
+  latitude: number;
+  longitude: number;
+  address?: string | null;
   city?: string | null;
   state?: string | null;
-  postalCode?: string | null;
-  petFriendly?: boolean | null;
-  reservationRequired?: boolean | null;
-  website?: string | null;
-  seasonStart?: string | null;
-  seasonEnd?: string | null;
-  rating?: number | null;
-  images?: Img[] | Img | null;
-  reviews?: Review[] | null;
+  country: string; // default "US"
+  elevation?: number | null;
+  terrainType?: string | null;
+  climateZone?: string | null;
+  amenities?: Json | null;
+  costPerNight?: string | number | null; // Prisma Decimal often serialized as string
+  maxCapacity?: number | null;
+  petFriendly: boolean;
+  reservationRequired: boolean;
+  seasonStart?: string | Date | null;
+  seasonEnd?: string | Date | null;
+  difficultyLevel?: number | null;
+  safetyNotes?: string | null;
+  regulations?: string | null;
+  contactInfo?: Json | null;
+  websiteUrl?: string | null;
+  images?: Json | null; // arbitrary JSON shape
+  verified: boolean;
+  isActive: boolean;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  rating?: number | string | null;      // <-- allow string too
+  createdById?: string | null;
+  reviews?: Review[] | null;            // may or may not be included by your route
 };
 
-// --- Helpers: images -----------------------------------------------------
-const normalizeImages = (images?: Img[] | Img | null): string[] => {
-  if (!images) return [];
-  if (Array.isArray(images)) {
-    return images
-      .map((i) => (typeof i === 'string' ? i : i?.url || ''))
-      .filter(Boolean);
-  }
-  const one = typeof images === 'string' ? images : images?.url || '';
-  return one ? [one] : [];
-};
-
-const getFirstImage = (images?: Img[] | Img | null): string | null => {
-  const arr = normalizeImages(images);
-  return arr[0] ?? null;
-};
-
-const fmt = (value: unknown): string => {
-  if (value === undefined || value === null || value === '') return '—';
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-  return String(value);
-};
-
+// ---------------- Utils ----------------
 const isPresent = (v: unknown) => v !== undefined && v !== null && v !== '';
 
-// Simple fetch with timeout that works everywhere
+const fmtBool = (b?: boolean | null) => (b ? 'Yes' : 'No');
+
+const fmtNumber = (n?: number | string | null, opts?: { digits?: number }) => {
+  if (n === null || n === undefined || n === '') return '—';
+  const num = typeof n === 'string' ? parseFloat(n) : n;
+  if (!Number.isFinite(num)) return '—';
+  const digits = opts?.digits ?? 1;
+  return Math.abs((num as number) - Math.round(num as number)) < 1e-9
+    ? String(Math.round(num as number))
+    : (num as number).toFixed(digits);
+};
+
+const fmtUSD = (val?: string | number | null) => {
+  if (val === null || val === undefined || val === '') return '—';
+  const num = typeof val === 'string' ? parseFloat(val) : val;
+  if (!isFinite(num as number)) return '—';
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(num as number);
+  } catch {
+    return `$${num}`;
+  }
+};
+
+const fmtDate = (d?: string | Date | null) => {
+  if (!d) return '—';
+  const dt = typeof d === 'string' ? new Date(d) : d;
+  if (isNaN(dt.getTime())) return '—';
+  return dt.toLocaleDateString();
+};
+
+// Normalize images from arbitrary JSON shapes
+const normalizeImagesFromJson = (images: Json): string[] => {
+  if (!images) return [];
+  if (typeof images === 'string') return images ? [images] : [];
+  if (Array.isArray(images)) {
+    return images
+      .map((it) => (typeof it === 'string' ? it : (it && (it.url || it.src || it.path)) || ''))
+      .filter(Boolean);
+  }
+  if (typeof images === 'object') {
+    if (Array.isArray((images as any).items)) {
+      return (images as any).items
+        .map((it: any) => (typeof it === 'string' ? it : (it && (it.url || it.src || it.path)) || ''))
+        .filter(Boolean);
+    }
+    const single = (images as any).url || (images as any).src || (images as any).path;
+    if (single) return [single];
+  }
+  return [];
+};
+
+const getFirstImage = (images?: Json | null): string | undefined => {
+  const arr = normalizeImagesFromJson(images ?? null);
+  return arr[0] || undefined;
+};
+
+// Simple fetch with timeout
 async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 8000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), ms);
@@ -82,85 +135,18 @@ async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 8000) 
   }
 }
 
-// --- Helpers: weather ----------------------------------------------------
-type WeatherDay = {
-  date: string; // ISO yyyy-mm-dd
-  tMax?: number;
-  tMin?: number;
-  precip?: number;
-  windMax?: number;
-  code?: number;
+// If DB rating is missing, fall back to average of review ratings
+const averageRating = (reviews?: Review[] | null): number | null => {
+  if (!reviews || reviews.length === 0) return null;
+  const nums = reviews
+    .map((r) => (typeof r?.rating === 'string' ? parseFloat(r.rating as any) : r?.rating))
+    .filter((n): n is number => typeof n === 'number' && Number.isFinite(n));
+  if (nums.length === 0) return null;
+  const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
+  return Number.isFinite(avg) ? avg : null;
 };
 
-function weatherCodeLabel(code?: number): string {
-  switch (code) {
-    case 0: return 'Clear';
-    case 1:
-    case 2:
-    case 3: return 'Partly cloudy';
-    case 45:
-    case 48: return 'Fog';
-    case 51:
-    case 53:
-    case 55: return 'Drizzle';
-    case 56:
-    case 57: return 'Freezing drizzle';
-    case 61:
-    case 63:
-    case 65: return 'Rain';
-    case 66:
-    case 67: return 'Freezing rain';
-    case 71:
-    case 73:
-    case 75: return 'Snow';
-    case 77: return 'Snow grains';
-    case 80:
-    case 81:
-    case 82: return 'Rain showers';
-    case 85:
-    case 86: return 'Snow showers';
-    case 95: return 'Thunderstorm';
-    case 96:
-    case 99: return 'Thunder w/ hail';
-    default: return '—';
-  }
-}
-
-function weatherCodeEmoji(code?: number): string {
-  switch (code) {
-    case 0: return '☀️';
-    case 1:
-    case 2:
-    case 3: return '⛅';
-    case 45:
-    case 48: return '🌫️';
-    case 51:
-    case 53:
-    case 55: return '🌦️';
-    case 56:
-    case 57: return '🌧️❄️';
-    case 61:
-    case 63:
-    case 65: return '🌧️';
-    case 66:
-    case 67: return '🌧️❄️';
-    case 71:
-    case 73:
-    case 75: return '❄️';
-    case 77: return '🌨️';
-    case 80:
-    case 81:
-    case 82: return '🌦️';
-    case 85:
-    case 86: return '🌨️';
-    case 95: return '⛈️';
-    case 96:
-    case 99: return '⛈️🧊';
-    default: return '—';
-  }
-}
-
-// --- Component ----------------------------------------------------------
+// ---------------- Page ----------------
 export default function LocationPage() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
@@ -168,10 +154,8 @@ export default function LocationPage() {
   const [data, setData] = useState<LocationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
-
-  const [weather, setWeather] = useState<WeatherDay[] | null>(null);
-  const [weatherError, setWeatherError] = useState<string | null>(null);
-  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -219,78 +203,18 @@ export default function LocationPage() {
     run();
   }, [API_URL, id]);
 
-  // Fetch weather once we have coords (Imperial units)
-  useEffect(() => {
-    const lat = Number(data?.latitude ?? NaN);
-    const lng = Number(data?.longitude ?? NaN);
-    if (!isFinite(lat) || !isFinite(lng)) {
-      setWeather(null);
-      return;
-    }
+  // Background image = first of images (if any), Gallery = rest
+  const allImages = normalizeImagesFromJson(data?.images ?? null);
+  const bgImage = allImages[0] || undefined;
+  const gallery = allImages.slice(1);
 
-    const getWeather = async () => {
-      setWeatherLoading(true);
-      setWeatherError(null);
-
-      const url = new URL('https://api.open-meteo.com/v1/forecast');
-      url.searchParams.set('latitude', String(lat));
-      url.searchParams.set('longitude', String(lng));
-      url.searchParams.set('daily', [
-        'weathercode',
-        'temperature_2m_max',
-        'temperature_2m_min',
-        'precipitation_sum',
-        'windspeed_10m_max',
-      ].join(','));
-      url.searchParams.set('forecast_days', '7');
-      url.searchParams.set('timezone', 'auto');
-
-      // Units: Fahrenheit + mph (+ inches for precip)
-      url.searchParams.set('temperature_unit', 'fahrenheit');
-      url.searchParams.set('wind_speed_unit', 'mph');
-      url.searchParams.set('precipitation_unit', 'inch');
-
-      try {
-        const res = await fetchWithTimeout(url.toString(), {}, 8000);
-        if (!res.ok) throw new Error(`Weather HTTP ${res.status}`);
-        const ct = res.headers.get('content-type') || '';
-        if (!ct.includes('application/json')) throw new Error('Weather: response is not JSON');
-
-        const json = await res.json();
-        const d = json?.daily;
-        if (!d?.time) throw new Error('Weather: missing daily data');
-
-        const out: WeatherDay[] = d.time.map((t: string, i: number) => ({
-          date: t,
-          tMax: d.temperature_2m_max?.[i],
-          tMin: d.temperature_2m_min?.[i],
-          precip: d.precipitation_sum?.[i],
-          windMax: d.windspeed_10m_max?.[i],
-          code: d.weathercode?.[i],
-        }));
-
-        setWeather(out);
-      } catch (err: any) {
-        console.error(err);
-        setWeather(null);
-        setWeatherError(err?.message || 'Failed to load weather.');
-      } finally {
-        setWeatherLoading(false);
-      }
-    };
-
-    getWeather();
-  }, [data?.latitude, data?.longitude]);
-
-  // Background image = first of images (if any)
-  const bgImage = getFirstImage(data?.images ?? null) || undefined;
-
-  // Gallery always = images after the first
-  const gallery: string[] = (() => {
-    if (!data) return [];
-    const all = normalizeImages(data.images);
-    return all.slice(1);
-  })();
+  // ----- Robust rating for display -----
+  const parsedDbRating =
+    typeof data?.rating === 'string' ? parseFloat(data.rating) : data?.rating ?? null;
+  const displayRatingRaw =
+    (Number.isFinite(parsedDbRating as number) ? (parsedDbRating as number) : null) ??
+    averageRating(data?.reviews);
+  const displayRating = fmtNumber(displayRatingRaw, { digits: 1 });
 
   return (
     <main className="text-neutral-100">
@@ -301,77 +225,51 @@ export default function LocationPage() {
         withFixedHeaderOffset
         containerClassName="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8"
       >
-        {/* Flex column so mt-auto can push footer; height = viewport minus fixed header */}
         <div className="flex min-h-[calc(100vh-var(--header-h,64px))] flex-col">
-          {/* Title & blurb */}
+          {/* Title & intro */}
           <section className="pt-2 sm:pt-4 pb-10">
             <div className="max-w-3xl">
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">
                 {loading ? 'Loading…' : data?.name ?? '—'}
               </h1>
               <p className="mt-3 text-lg text-neutral-200">
-                {loading ? '' : data?.blurb || data?.description || '—'}
+                {loading ? '' : data?.description || '—'}
               </p>
+              <div className="mt-2 text-sm text-neutral-400">
+                {loading || !data ? '' : [data.city, data.state, data.country].filter(isPresent).join(', ')}
+              </div>
             </div>
           </section>
 
-          {/* Row: Details (left) + Map (right) */}
+          {/* Row: Quick facts (left) + Map (right) */}
           <section className="relative py-8">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              {/* Left: Details container (keeps quick facts, address, website) */}
+              {/* Left: Quick facts */}
               <article className="lg:col-span-2 rounded-2xl border border-neutral-800 bg-neutral-900/80 backdrop-blur p-6">
                 {loading && <p className="text-neutral-400">Loading details…</p>}
                 {error && !loading && <p className="text-red-400">{error}</p>}
 
                 {!loading && !error && data && (
                   <div className="space-y-6">
-                    {/* Quick facts */}
                     <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-                      <Info label="Price" value={fmt(data.price ?? data.cost)} />
-                      <Info label="Rating" value={fmt(data.rating)} />
-                      <Info label="Pet friendly" value={fmt(data.petFriendly)} />
-                      <Info label="Reservation required" value={fmt(data.reservationRequired)} />
-                      <Info label="Season start" value={fmt(data.seasonStart)} />
-                      <Info label="Season end" value={fmt(data.seasonEnd)} />
-                    </div>
-
-                    {/* Address */}
-                    <div className="rounded-xl border border-neutral-800 p-4">
-                      <h3 className="font-semibold mb-2">Address</h3>
-                      <p className="text-neutral-300" style={{ whiteSpace: 'pre-line' }}>
-                        {[
-                          data.addressLine1,
-                          data.addressLine2,
-                          [data.city, data.state].filter(isPresent).join(', '),
-                          data.postalCode,
-                        ]
-                          .filter(isPresent)
-                          .join('\n') || '—'}
-                      </p>
-                    </div>
-
-                    {/* Website */}
-                    <div className="rounded-xl border border-neutral-800 p-4">
-                      <h3 className="font-semibold mb-2">Website</h3>
-                      {data.website ? (
-                        <a
-                          href={data.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-emerald-400 hover:underline break-words"
-                        >
-                          {data.website}
-                        </a>
-                      ) : (
-                        <span className="text-neutral-500">—</span>
-                      )}
+                      <Info label="Rating" value={displayRating} />
+                      <Info label="Cost / Night" value={fmtUSD(data.costPerNight)} />
+                      <Info label="Max Capacity" value={fmtNumber(data.maxCapacity ?? null)} />
+                      <Info label="Pet Friendly" value={fmtBool(data.petFriendly)} />
+                      <Info label="Reservation Required" value={fmtBool(data.reservationRequired)} />
+                      <Info label="Season Start" value={fmtDate(data.seasonStart ?? null)} />
+                      <Info label="Season End" value={fmtDate(data.seasonEnd ?? null)} />
+                      <Info label="Difficulty" value={fmtNumber(data.difficultyLevel ?? null)} />
+                      <Info label="Elevation (ft)" value={fmtNumber(data.elevation ?? null)} />
+                      <Info label="Terrain" value={data.terrainType || '—'} />
+                      <Info label="Climate" value={data.climateZone || '—'} />
                     </div>
                   </div>
                 )}
               </article>
 
-              {/* Right: Map (no label) */}
-              <aside className="rounded-2xl border border-neutral-800 bg-neutral-900/80 backdrop-blur p-4">
+              {/* Right: Map (no label) — card height matches map height */}
+              <aside className="rounded-2xl border border-neutral-800 bg-neutral-900/80 backdrop-blur h-96 overflow-hidden">
                 {isPresent(data?.latitude) && isPresent(data?.longitude) ? (
                   <MapComponent
                     locations={[
@@ -385,7 +283,7 @@ export default function LocationPage() {
                     ]}
                   />
                 ) : (
-                  <div className="w-full h-96 flex items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900 text-neutral-500">
+                  <div className="w-full h-96 flex items-center justify-center bg-neutral-900 text-neutral-500">
                     —
                   </div>
                 )}
@@ -394,79 +292,129 @@ export default function LocationPage() {
           </section>
 
           {/* Full-width Weather */}
+          <WeatherForecast
+            lat={data?.latitude}
+            lng={data?.longitude}
+            className="pb-8"
+            sectionTitle="Weather"
+          />
+
+          {/* Consolidated Details Block (Address, Website, Amenities, Safety, Regulations, Contact) */}
           <section className="pb-8">
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 backdrop-blur p-6">
-              <h3 className="font-semibold mb-3">Weather</h3>
-              {!isPresent(data?.latitude) || !isPresent(data?.longitude) ? (
-                <p className="text-neutral-500">No coordinates available.</p>
-              ) : weatherLoading ? (
-                <p className="text-neutral-400">Loading 7-day forecast…</p>
-              ) : weatherError ? (
-                <p className="text-red-400">{weatherError}</p>
-              ) : weather && weather.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-                  {weather.slice(0, 7).map((d) => {
-                    const date = new Date(d.date);
-                    const short = date.toLocaleDateString(undefined, {
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric',
-                    });
-                    return (
-                      <div
-                        key={d.date}
-                        className="rounded-lg border border-neutral-800 bg-neutral-900/70 p-3 text-sm"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">{short}</span>
-                          <span className="text-xl">{weatherCodeEmoji(d.code)}</span>
-                        </div>
-                        <div className="mt-2 text-neutral-300">{weatherCodeLabel(d.code)}</div>
-                        <div className="mt-2 flex items-center justify-between">
-                          <span className="text-emerald-300 font-semibold">
-                            {Number.isFinite(d.tMax ?? NaN) ? Math.round(d.tMax!) : '—'}°
-                            <span className="text-xs align-top">F</span>
-                          </span>
-                          <span className="text-neutral-400">
-                            {Number.isFinite(d.tMin ?? NaN) ? Math.round(d.tMin!) : '—'}°
-                            <span className="text-xs align-top">F</span>
-                          </span>
-                        </div>
-                        <div className="mt-1 text-xs text-neutral-400">
-                          💧 {typeof d.precip === 'number' ? d.precip.toFixed(2) : '—'} in
-                        </div>
-                        <div className="mt-1 text-xs text-neutral-400">
-                          🌬️ {Number.isFinite(d.windMax ?? NaN) ? Math.round(d.windMax!) : '—'} mph
-                        </div>
-                      </div>
-                    );
-                  })}
+            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 backdrop-blur divide-y divide-neutral-800">
+              {/* Address */}
+              <div className="p-6">
+                <h3 className="font-semibold mb-2">Address</h3>
+                <p className="text-neutral-300 whitespace-pre-line">
+                  {[
+                    data?.address,
+                    [data?.city, data?.state, data?.country].filter(isPresent).join(', '),
+                  ]
+                    .filter(isPresent)
+                    .join('\n') || '—'}
+                </p>
+              </div>
+
+              {/* Website */}
+              <div className="p-6">
+                <h3 className="font-semibold mb-2">Website</h3>
+                {data?.websiteUrl ? (
+                  <a
+                    href={data.websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-400 hover:underline break-words"
+                  >
+                    {data.websiteUrl}
+                  </a>
+                ) : (
+                  <span className="text-neutral-500">—</span>
+                )}
+              </div>
+
+              {/* Amenities */}
+              <div className="p-6">
+                <h3 className="font-semibold mb-2">Amenities</h3>
+                {isPresent(data?.amenities) ? (
+                  Array.isArray(data?.amenities) ? (
+                    <ul className="list-disc list-inside text-neutral-300 space-y-1">
+                      {(data!.amenities as any[]).map((a: any, i: number) => (
+                        <li key={i}>{String(a)}</li>
+                      ))}
+                    </ul>
+                  ) : typeof data?.amenities === 'object' ? (
+                    <pre className="text-neutral-300 overflow-auto text-sm">
+                      {JSON.stringify(data?.amenities, null, 2)}
+                    </pre>
+                  ) : (
+                    <span className="text-neutral-300">{String(data?.amenities)}</span>
+                  )
+                ) : (
+                  <span className="text-neutral-500">—</span>
+                )}
+              </div>
+
+              {/* Safety Notes & Regulations (two-column on md+) */}
+              {(isPresent(data?.safetyNotes) || isPresent(data?.regulations)) && (
+                <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="font-semibold mb-2">Safety Notes</h3>
+                      <p className="text-neutral-300 whitespace-pre-line">
+                        {data?.safetyNotes || '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-2">Regulations</h3>
+                      <p className="text-neutral-300 whitespace-pre-line">
+                        {data?.regulations || '—'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <p className="text-neutral-500">—</p>
+              )}
+
+              {/* Contact Info */}
+              {isPresent(data?.contactInfo) && (
+                <div className="p-6">
+                  <h3 className="font-semibold mb-2">Contact Info</h3>
+                  {typeof data?.contactInfo === 'object' ? (
+                    <pre className="text-neutral-300 overflow-auto text-sm">
+                      {JSON.stringify(data?.contactInfo, null, 2)}
+                    </pre>
+                  ) : (
+                    <span className="text-neutral-300">{String(data?.contactInfo)}</span>
+                  )}
+                </div>
               )}
             </div>
           </section>
 
-          {/* Full-width Gallery */}
+          {/* Gallery (full-width) */}
           <section className="pb-8">
             <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 backdrop-blur p-6">
               <h3 className="font-semibold mb-3">Gallery</h3>
               {gallery.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {gallery.map((src, i) => (
-                    <div
+                    <button
                       key={i}
-                      className="relative aspect-[4/3] overflow-hidden rounded-xl border border-neutral-800"
+                      type="button"
+                      onClick={() => {
+                        setLightboxIndex(i);
+                        setLightboxOpen(true);
+                      }}
+                      className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-neutral-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={src}
                         alt={`Photo ${i + 1}`}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
                         loading="lazy"
                       />
-                    </div>
+                      <span className="pointer-events-none absolute inset-0 bg-black/0 group-hover:bg-black/10" />
+                    </button>
                   ))}
                 </div>
               ) : (
@@ -475,7 +423,7 @@ export default function LocationPage() {
             </div>
           </section>
 
-          {/* Full-width Reviews */}
+          {/* Reviews (full-width) */}
           <section className="pb-12">
             <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 backdrop-blur p-6">
               <h3 className="font-semibold mb-3">Reviews</h3>
@@ -485,7 +433,7 @@ export default function LocationPage() {
                     <li key={r.id ?? i} className="rounded-xl border border-neutral-800 p-4">
                       <div className="flex items-center justify-between">
                         <div className="font-medium">{r.author || 'Anonymous'}</div>
-                        <div className="text-sm text-neutral-400">{fmt(r.rating)}</div>
+                        <div className="text-sm text-neutral-400">{r.rating ?? '—'}</div>
                       </div>
                       {r.comment && <p className="mt-2 text-neutral-300">{r.comment}</p>}
                       {r.createdAt && (
@@ -502,8 +450,14 @@ export default function LocationPage() {
             </div>
           </section>
 
-          {/* Spacer pushes footer to bottom when content is short */}
           <div className="mt-auto" />
+
+          <GalleryLightbox
+            images={gallery}
+            isOpen={lightboxOpen}
+            startIndex={lightboxIndex}
+            onClose={() => setLightboxOpen(false)}
+          />
 
           <Footer />
         </div>
@@ -512,9 +466,9 @@ export default function LocationPage() {
   );
 }
 
-// --- Small UI -----------------------------------------------------------
+// ---------------- Small UI ----------------
 function Info({ label, value }: { label: string; value: string }) {
-  const isMissing = value === '—';
+  const isMissing = value === '—' || value === '';
   return (
     <div
       className={`rounded-xl border p-3 ${
