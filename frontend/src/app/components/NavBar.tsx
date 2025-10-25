@@ -93,15 +93,19 @@ export default function NavBar({ navQuery = '', setNavQuery, submitSearch }: Nav
               <div className="h-9 w-24 animate-pulse rounded-full bg-neutral-800/70" aria-hidden="true" />
             ) : isAuthenticated && user ? (
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-3 rounded-full border border-neutral-800 bg-neutral-900/70 px-3 py-1.5">
+                <Link
+                  href="/account"
+                  className="group flex items-center gap-3 rounded-full border border-neutral-800 bg-neutral-900/70 px-3 py-1.5 text-left transition hover:border-emerald-500 hover:ring-2 hover:ring-emerald-500 focus-visible:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  aria-label="View account"
+                >
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white">
                     {displayName.charAt(0).toUpperCase()}
                   </div>
                   <div className="hidden text-left text-sm text-neutral-200 sm:block">
                     <p className="font-medium leading-tight">{displayName}</p>
-                    <p className="text-xs text-neutral-500">Signed in</p>
+                    <p className="text-xs text-neutral-500 transition group-hover:text-neutral-300">Signed in</p>
                   </div>
-                </div>
+                </Link>
                 <button
                   type="button"
                   onClick={handleLogout}
