@@ -2,31 +2,40 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/context/AuthContext';
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { login } = useAuth();
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const buttonText = isSubmitting ? 'Signing you in…' : 'Sign in to OutdoorSpot';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate UTA email domain
+    setSubmitError(null);
+
     if (!formData.email.endsWith('@mavs.uta.edu')) {
-      alert('Please use your UTA email address (@mavs.uta.edu)');
+      setSubmitError('Please use your UTA email address (@mavs.uta.edu).');
       return;
     }
-    
-    // Call the backend API
-    try {
-      // Check if API_URL is properly set
-      if (!API_URL || API_URL === 'undefined') {
-        throw new Error('Backend URL not configured');
-      }
 
+    if (!API_URL || API_URL === 'undefined') {
+      setSubmitError('Backend URL not configured. Please contact support.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -35,37 +44,28 @@ export default function LoginPage() {
         body: JSON.stringify(formData),
       });
 
-      // Check if response is ok
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      // Check if response is JSON
       const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Response is not JSON');
+      const isJson = contentType && contentType.includes('application/json');
+      const data = isJson ? await response.json() : null;
+
+      if (!response.ok) {
+        const message = data?.message || `Unable to sign in (status ${response.status}).`;
+        throw new Error(message);
       }
 
-      const data = await response.json();
-
-      if (data.success) {
-        // Save auth state to localStorage
-        const authState = {
-          isLoggedIn: true,
-          user: data.data.user,
-          token: data.data.token
-        };
-        localStorage.setItem('authState', JSON.stringify(authState));
-        
-        alert(`Login successful! Welcome back, ${data.data.user.name}!`);
-        // Redirect to main page or dashboard
-        window.location.href = '/';
-      } else {
-        alert(`Login failed: ${data.message}`);
+      if (!data?.success || !data?.data?.user || !data?.data?.token) {
+        throw new Error('Unexpected response from the server.');
       }
+
+      await login({ user: data.data.user, token: data.data.token });
+      router.push('/');
+      router.refresh();
     } catch (error) {
       console.error('Login error:', error);
-      alert('Login failed. Please try again.');
+      const message = error instanceof Error ? error.message : 'Login failed. Please try again.';
+      setSubmitError(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -164,12 +164,23 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {submitError && (
+              <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4" role="alert" aria-live="assertive">
+                <p className="text-sm text-red-700">{submitError}</p>
+              </div>
+            )}
+
             <div className="mt-6">
               <button
                 type="submit"
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
+                disabled={isSubmitting}
+                className={`group relative flex w-full justify-center rounded-lg border border-transparent py-2 px-4 text-sm font-medium text-white transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  isSubmitting
+                    ? 'cursor-not-allowed bg-blue-400'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
               >
-                Sign in to OutdoorSpot
+                {buttonText}
               </button>
             </div>
 
