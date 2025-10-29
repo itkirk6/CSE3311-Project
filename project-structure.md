@@ -2,7 +2,7 @@
 
 This document outlines the complete file structure for the OutdoorSpot web application.
 
-## 📁 Complete Project Structure
+##Complete Project Structure
 
 ```
 outdoor-spot/
@@ -363,7 +363,7 @@ outdoor-spot/
 └── database-schema.sql                 # Database schema file
 ```
 
-## 🚀 Quick Start Commands
+##Quick Start Commands
 
 ```bash
 # Clone and setup
@@ -395,7 +395,7 @@ npm run build:backend    # Build backend only
 npm run deploy           # Deploy to production
 ```
 
-## 📋 Development Workflow
+##Development Workflow
 
 1. **Feature Development**
    - Create feature branch from `main`
@@ -415,7 +415,7 @@ npm run deploy           # Deploy to production
    - Database migrations run automatically
    - Health checks verify deployment
 
-## 🔧 Environment Configuration
+## Environment Configuration
 
 ### Required Environment Variables
 
