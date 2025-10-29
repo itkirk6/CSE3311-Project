@@ -115,29 +115,29 @@ outdoor-spot/
 ## Implementation Roadmap
 
 ### Phase 1: Foundation (Weeks 1-2)
-- [ ] Set up development environment
-- [ ] Create basic project structure
-- [ ] Set up database schema
-- [ ] Implement user authentication
-- [ ] Basic UI components and layout
+-  Set up development environment
+-  Create basic project structure
+-  Set up database schema
+-  Implement user authentication
+-  Basic UI components and layout
 
 ### Phase 2: Core Features (Weeks 3-4)
-- [ ] Location search and filtering
-- [ ] Interactive map integration
-- [ ] Location detail pages
-- [ ] Basic user profiles
+-  Location search and filtering
+-  Interactive map integration
+-  Location detail pages
+-  Basic user profiles
 
 ### Phase 3: Enhanced Features (Weeks 5-6)
-- [ ] Advanced filtering options
-- [ ] Review and rating system
-- [ ] Image upload and management
-- [ ] Event integration
+-  Advanced filtering options
+-  Review and rating system
+-  Image upload and management
+-  Event integration
 
 ### Phase 4: Polish & Launch (Weeks 7-8)
-- [ ] Performance optimization
-- [ ] Mobile responsiveness
-- [ ] Testing and bug fixes
-- [ ] Deployment and monitoring
+-  Performance optimization
+-  Mobile responsiveness
+-  Testing and bug fixes
+-  Deployment and monitoring
 
 ## Getting Started
 
