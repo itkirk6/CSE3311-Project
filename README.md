@@ -2,11 +2,11 @@
 
 A comprehensive web application that helps users discover camping spots and outdoor activities including hiking, mountain biking, kayaking, and photography opportunities.
 
-## 🎯 Project Overview
+##Project Overview
 
 OutdoorSpot connects outdoor enthusiasts with the perfect camping and activity locations based on their preferences, including distance, terrain, climate, events, and cost considerations.
 
-## ✨ Key Features
+## Key Features
 
 ### Core Functionality
 - **Location Discovery**: Find camping spots and outdoor activity locations
@@ -32,7 +32,7 @@ OutdoorSpot connects outdoor enthusiasts with the perfect camping and activity l
 - **Trip Planning**: Multi-day itinerary planning
 - **Social Features**: Reviews, photos, recommendations
 
-## 🏗️ Technology Stack
+## Technology Stack
 
 ### Frontend
 - **React 18** - Modern UI framework with hooks and functional components
@@ -65,7 +65,7 @@ OutdoorSpot connects outdoor enthusiasts with the perfect camping and activity l
 - **Railway/Render** - Backend deployment
 - **PlanetScale** - Database hosting
 
-## 📁 Project Structure
+##Project Structure
 
 ```
 outdoor-spot/
@@ -95,7 +95,7 @@ outdoor-spot/
 └── README.md
 ```
 
-## 🗄️ Database Schema
+## Database Schema
 
 ### Core Entities
 - **Users**: Authentication and profile information
@@ -112,7 +112,7 @@ outdoor-spot/
 - Events are associated with specific locations
 - Users can bookmark multiple locations
 
-## 🚀 Implementation Roadmap
+## Implementation Roadmap
 
 ### Phase 1: Foundation (Weeks 1-2)
 - [ ] Set up development environment
@@ -139,7 +139,7 @@ outdoor-spot/
 - [ ] Testing and bug fixes
 - [ ] Deployment and monitoring
 
-## 🔧 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Node.js 18+
@@ -186,7 +186,7 @@ outdoor-spot/
    cd frontend && npm run dev
    ```
 
-## 📊 Data Sources
+## Data Sources
 
 ### Initial Data Collection
 - **Public APIs**: Recreation.gov, National Park Service
@@ -201,7 +201,7 @@ outdoor-spot/
 - **Data Validation**: Automated and manual verification
 - **Regular Updates**: Seasonal information and availability
 
-## 🎨 Design System
+## Design System
 
 ### Color Palette
 - **Primary**: Forest Green (#2D5016)
@@ -222,7 +222,7 @@ outdoor-spot/
 - **Forms**: User input and data collection
 - **Navigation**: Intuitive site structure
 
-## 🔐 Security Considerations
+## Security Considerations
 
 - **Authentication**: JWT tokens with refresh mechanism
 - **Authorization**: Role-based access control
@@ -232,7 +232,7 @@ outdoor-spot/
 - **HTTPS**: Secure data transmission
 - **Privacy**: GDPR compliance for user data
 
-## 📈 Performance Optimization
+## Performance Optimization
 
 - **Image Optimization**: WebP format, lazy loading
 - **Code Splitting**: Route-based and component-based
@@ -240,7 +240,7 @@ outdoor-spot/
 - **Database**: Indexing, query optimization
 - **Monitoring**: Performance tracking and alerting
 
-## 🧪 Testing Strategy
+##Testing Strategy
 
 - **Unit Tests**: Jest for utility functions and components
 - **Integration Tests**: API endpoint testing
@@ -250,7 +250,7 @@ outdoor-spot/
 
 
 
-## 📄 License
+## License
 
 MIT License - see LICENSE file for details
 
