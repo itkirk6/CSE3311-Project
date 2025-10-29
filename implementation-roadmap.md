@@ -108,11 +108,11 @@ This roadmap breaks down the development of OutdoorSpot into manageable phases, 
 - [ ] Add search history functionality
 
 ### Week 3-4 Deliverables
-- ✅ Complete location management system
-- ✅ Advanced search and filtering
-- ✅ Interactive map integration
-- ✅ Location detail pages
-- ✅ Performance optimizations
+-  Complete location management system
+-  Advanced search and filtering
+-  Interactive map integration
+-  Location detail pages
+-  Performance optimizations
 
 ## Phase 3: Enhanced Features (Weeks 5-6)
 
