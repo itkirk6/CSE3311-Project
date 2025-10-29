@@ -2,8 +2,6 @@
 
 ##  8-Week Development Plan
 
-This roadmap breaks down the development of OutdoorSpot into manageable phases, with clear milestones and deliverables for each week.
-
 ##  Phase 1: Foundation & Setup (Weeks 1-2)
 
 ### Week 1: Project Setup & Infrastructure
