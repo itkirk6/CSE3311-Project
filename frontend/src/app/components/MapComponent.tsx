@@ -123,15 +123,15 @@ const MapComponent: React.FC<Props> = ({
     locations.forEach((loc) => {
       const m = L.marker([loc.latitude, loc.longitude]);
       const html =
-        `<div style="color:#111">` +
+        `<div class="location-popup-content">` +
         `<a href="/location?id=${encodeURIComponent(
           loc.id
-        )}" style="font-weight:600;color:#059669;text-decoration:none;">${loc.name}</a>` +
+        )}" class="location-popup-title">${loc.name}</a>` +
         (loc.description
-          ? `<p style="margin:.25rem 0 0;color:#4b5563;font-size:.85rem;">${loc.description}</p>`
+          ? `<p class="location-popup-description">${loc.description}</p>`
           : '') +
         `</div>`;
-      m.bindPopup(html);
+      m.bindPopup(html, { className: 'location-popup' });
       if (onSelect) {
         m.on('click', () => onSelect(loc));
       }
