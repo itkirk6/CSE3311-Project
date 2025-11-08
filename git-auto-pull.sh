@@ -2,7 +2,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="/srv/myproject"
+REPO_DIR="/home/kirk-admin/projects/CSE3311-Project"
 BRANCH="main"
 LOG="/var/log/git-auto-pull.log"
 LOCK="/var/lock/git-auto-pull.lock"
