@@ -134,8 +134,7 @@ outdoor-spot/
 ## Getting Started
 
 ### Prerequisites
-- Docker
-- Docker Compose
+- Docker (with the Compose plugin providing the `docker compose` CLI)
 - Git
 
 ### Installation
