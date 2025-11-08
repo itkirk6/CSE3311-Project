@@ -163,6 +163,22 @@ outdoor-spot/
    The script creates `.env.local` at the repository root for the backend and `frontend/.env.local` for the Next.js app. These files shadow the production URLs only on your machine, enabling local testing without modifying `.env`.
 
 4. **Build and start with Docker**
+
+   Production deployments still rely on the existing `web` reverse-proxy network, so the
+   base compose file keeps that external dependency intact. For local development you can
+   layer on the new override file that swaps the network to an isolated bridge and
+   publishes ports to your host machine:
+
+   ```bash
+   npm run docker:dev
+   ```
+
+   The helper automatically rebuilds images before starting the stack so your local
+   changes are picked up.
+
+   If you're deploying alongside the production proxy network, continue using the
+   original command:
+
    ```bash
    docker compose build
    docker compose up -d

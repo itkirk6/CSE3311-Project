@@ -41,6 +41,7 @@
     "clean:frontend": "cd frontend && rm -rf .next node_modules",
     "clean:backend": "cd backend && rm -rf dist node_modules",
     "docker:build": "docker-compose build",
+    "docker:dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",

@@ -1,0 +1,21 @@
+services:
+  postgres:
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+  backend:
+    ports:
+      - "${PORT:-3001}:3001"
+    networks:
+      - outdoor-spot
+
+  frontend:
+    network_mode: null
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    networks:
+      - outdoor-spot
+
+networks:
+  web:
+    driver: bridge
