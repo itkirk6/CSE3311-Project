@@ -7,15 +7,15 @@ services:
     ports:
       - "${PORT:-3001}:3001"
     networks:
-      - outdoor-spot
+      outdoor-spot: null
 
   frontend:
     network_mode: null
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     networks:
-      - outdoor-spot
+      outdoor-spot: null
+      web: null
 
 networks:
-  web:
-    driver: bridge
+  web: null
