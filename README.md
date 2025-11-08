@@ -83,7 +83,8 @@ outdoor-spot/
 │   ├── prisma/             # Database schema and migrations
 │   └── package.json
 ├── shared/                  # Shared types and utilities
-├── docker-compose.yml      # Development environment
+├── docker-compose.yml      # Production-oriented compose stack
+├── docker-compose.dev.yml  # Local development compose stack
 ├── .github/                # GitHub Actions workflows
 └── README.md
 ```
@@ -164,9 +165,9 @@ outdoor-spot/
 4. **Build and start with Docker**
 
    Production deployments still rely on the existing `web` reverse-proxy network, so the
-   base compose file keeps that external dependency intact. For local development you can
-   layer on the new override file that swaps the network to an isolated bridge and
-   publishes ports to your host machine:
+   base compose file keeps that external dependency intact. For local development use the
+   dedicated compose file that omits the external network and publishes the container
+   ports directly to your machine:
 
    ```bash
    npm run docker:dev
