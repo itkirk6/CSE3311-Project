@@ -83,7 +83,8 @@ outdoor-spot/
 │   ├── prisma/             # Database schema and migrations
 │   └── package.json
 ├── shared/                  # Shared types and utilities
-├── docker-compose.yml      # Development environment
+├── docker-compose.yml      # Production-oriented compose stack
+├── docker-compose.dev.yml  # Local development compose stack
 ├── .github/                # GitHub Actions workflows
 └── README.md
 ```
@@ -134,8 +135,7 @@ outdoor-spot/
 ## Getting Started
 
 ### Prerequisites
-- Docker
-- Docker Compose
+- Docker (with the Compose plugin providing the `docker compose` CLI)
 - Git
 
 ### Installation
@@ -152,7 +152,33 @@ outdoor-spot/
    # Update credentials such as database URLs and API keys as needed
    ```
 
-3. **Build and start with Docker**
+3. **(Optional) Generate local-only overrides**
+
+   To point the stack at a LAN-accessible backend/frontend while keeping the production values intact, use the helper script:
+
+   ```bash
+   npm run setup:dev-env
+   ```
+
+   The script creates `.env.local` at the repository root for the backend and `frontend/.env.local` for the Next.js app. These files shadow the production URLs only on your machine, enabling local testing without modifying `.env`.
+
+4. **Build and start with Docker**
+
+   Production deployments still rely on the existing `web` reverse-proxy network, so the
+   base compose file keeps that external dependency intact. For local development use the
+   dedicated compose file that omits the external network and publishes the container
+   ports directly to your machine:
+
+   ```bash
+   npm run docker:dev
+   ```
+
+   The helper automatically rebuilds images before starting the stack so your local
+   changes are picked up.
+
+   If you're deploying alongside the production proxy network, continue using the
+   original command:
+
    ```bash
    docker compose build
    docker compose up -d

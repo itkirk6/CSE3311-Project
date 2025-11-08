@@ -9,8 +9,9 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { PrismaClient, Prisma } from "@prisma/client";
-import * as dotenv from "dotenv";
-dotenv.config();
+import { loadEnv } from "../src/utils/loadEnv";
+
+loadEnv();
 
 const prisma = new PrismaClient();
 
