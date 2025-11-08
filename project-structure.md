@@ -4,7 +4,6 @@ This document outlines the complete file structure for the OutdoorSpot web appli
 
 ##Complete Project Structure
 
-#test
 ```
 outdoor-spot/
 ├── README.md                           # Project overview and setup instructions
