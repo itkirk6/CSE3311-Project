@@ -42,14 +42,43 @@ router.post('/', authenticate, async (req: any, res, next) => {
   try {
     const { content, rating, locationId } = req.body;
 
+    if (!locationId || typeof locationId !== 'string') {
+      return res.status(400).json({ success: false, message: 'A valid locationId is required.' });
+    }
+
+    const parsedRating = Number(rating);
+    if (!Number.isInteger(parsedRating) || parsedRating < 1 || parsedRating > 5) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Rating must be an integer between 1 and 5.' });
+    }
+
+    const existing = await prisma.review.findUnique({
+      where: {
+        userId_locationId: {
+          userId: req.user.id,
+          locationId,
+        },
+      },
+    });
+
+    if (existing) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'You have already submitted a review for this location.' });
+    }
+
     const newReview = await prisma.review.create({
       data: {
         content,
-        rating,
+        rating: parsedRating,
         user: { connect: { id: req.user.id } },
-        ...(locationId ? { location: { connect: { id: locationId } } } : {}),
+        location: { connect: { id: locationId } },
       },
-      include: { user: true, location: true },
+      include: {
+        user: true,
+        location: true,
+      },
     });
 
     res.status(201).json({ success: true, data: newReview });
@@ -73,13 +102,94 @@ router.put('/:id', authenticate, async (req: any, res, next) => {
       return;
     }
 
+    const parsedRating = rating !== undefined ? Number(rating) : undefined;
+    if (
+      parsedRating !== undefined &&
+      (!Number.isInteger(parsedRating) || parsedRating < 1 || parsedRating > 5)
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Rating must be an integer between 1 and 5.' });
+    }
+
     const updatedReview = await prisma.review.update({
       where: { id: req.params['id'] },
-      data: { content, rating },
+      data: {
+        content,
+        ...(parsedRating !== undefined ? { rating: parsedRating } : {}),
+      },
       include: { user: true, location: true },
     });
 
     res.json({ success: true, data: updatedReview });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/location/:locationId', optionalAuth, async (req: any, res, next) => {
+  try {
+    const { locationId } = req.params;
+    if (!locationId) {
+      return res.status(400).json({ success: false, message: 'locationId is required' });
+    }
+
+    const limitParam = Number(req.query['limit']);
+    const limit = Number.isInteger(limitParam) ? limitParam : 5;
+    const safeLimit = Math.min(Math.max(limit, 1), 20);
+
+    const [aggregate, reviews, userReview] = await Promise.all([
+      prisma.review.aggregate({
+        where: { locationId },
+        _avg: { rating: true },
+      }),
+      prisma.review.findMany({
+        where: { locationId },
+        orderBy: { createdAt: 'desc' },
+        take: safeLimit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              firstName: true,
+              lastName: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      }),
+      req.user
+        ? prisma.review.findUnique({
+            where: {
+              userId_locationId: {
+                userId: req.user.id,
+                locationId,
+              },
+            },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  username: true,
+                  firstName: true,
+                  lastName: true,
+                  avatarUrl: true,
+                },
+              },
+            },
+          })
+        : null,
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        averageRating: aggregate._avg.rating ?? null,
+        reviews,
+        userReview,
+      },
+    });
   } catch (error) {
     next(error);
   }

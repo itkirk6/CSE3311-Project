@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
@@ -9,6 +9,7 @@ import Footer from '@/app/components/Footer';
 import PageShell from '@/app/components/PageShell';
 import WeatherForecast from '@/app/components/WeatherForecast';
 import GalleryLightbox from '@/app/components/GalleryLightbox';
+import { useAuth } from '@/app/context/AuthContext';
 
 // Lazy-load MapComponent to avoid SSR issues
 const MapComponent = dynamic(() => import('@/app/components/MapComponent'), { ssr: false });
@@ -16,12 +17,17 @@ const MapComponent = dynamic(() => import('@/app/components/MapComponent'), { ss
 // ---------------- Types (mirror Prisma / API) ----------------
 type Json = any;
 
-type Review = {
-  id?: string;
-  author?: string;
-  rating?: number | string | null; // <-- allow string too
-  comment?: string | null;
-  createdAt?: string | Date;
+type ReviewSummary = {
+  id: string;
+  rating: number;
+  content?: string | null;
+  createdAt: string;
+  user?: {
+    id: string;
+    username?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null;
 };
 
 type LocationDetail = {
@@ -57,7 +63,6 @@ type LocationDetail = {
   updatedAt: string | Date;
   rating?: number | string | null;      // <-- allow string too
   createdById?: string | null;
-  reviews?: Review[] | null;            // may or may not be included by your route
 };
 
 // ---------------- Utils ----------------
@@ -118,11 +123,6 @@ const normalizeImagesFromJson = (images: Json): string[] => {
   return [];
 };
 
-const getFirstImage = (images?: Json | null): string | undefined => {
-  const arr = normalizeImagesFromJson(images ?? null);
-  return arr[0] || undefined;
-};
-
 // Simple fetch with timeout
 async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 8000) {
   const controller = new AbortController();
@@ -135,34 +135,39 @@ async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 8000) 
   }
 }
 
-// If DB rating is missing, fall back to average of review ratings
-const averageRating = (reviews?: Review[] | null): number | null => {
-  if (!reviews || reviews.length === 0) return null;
-  const nums = reviews
-    .map((r) => (typeof r?.rating === 'string' ? parseFloat(r.rating as any) : r?.rating))
-    .filter((n): n is number => typeof n === 'number' && Number.isFinite(n));
-  if (nums.length === 0) return null;
-  const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
-  return Number.isFinite(avg) ? avg : null;
+const reviewerDisplayName = (review?: ReviewSummary | null) => {
+  if (!review?.user) return 'Anonymous';
+  const parts = [review.user.firstName, review.user.lastName].filter(Boolean).join(' ').trim();
+  if (parts) return parts;
+  if (review.user.username) return review.user.username;
+  return 'Anonymous';
 };
 
 // ---------------- Page ----------------
 export default function LocationPage() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
+  const { isAuthenticated, token } = useAuth();
 
   const [data, setData] = useState<LocationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [reviewsData, setReviewsData] = useState<ReviewSummary[]>([]);
+  const [reviewsAverage, setReviewsAverage] = useState<number | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
+  const [userReview, setUserReview] = useState<ReviewSummary | null>(null);
+  const [newReviewRating, setNewReviewRating] = useState(5);
+  const [newReviewContent, setNewReviewContent] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [submitReviewError, setSubmitReviewError] = useState<string | null>(null);
+  const [submitReviewSuccess, setSubmitReviewSuccess] = useState<string | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const normalizedApiUrl = (API_URL || '').replace(/\/$/, '');
 
-  const buildEndpoint = (locId: string) => {
-    const base = (API_URL || '').replace(/\/$/, '');
-    return `${base}/api/locations/id/${encodeURIComponent(locId)}`;
-  };
 
   useEffect(() => {
     const run = async () => {
@@ -177,12 +182,13 @@ export default function LocationPage() {
         return;
       }
 
-      try {
-        const res = await fetchWithTimeout(
-          buildEndpoint(id),
-          { headers: { 'Content-Type': 'application/json' } },
-          8000
-        );
+        try {
+          const locationEndpoint = `${normalizedApiUrl}/api/locations/id/${encodeURIComponent(id)}`;
+          const res = await fetchWithTimeout(
+            locationEndpoint,
+            { headers: { 'Content-Type': 'application/json' } },
+            8000
+          );
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const ct = res.headers.get('content-type') || '';
@@ -201,7 +207,47 @@ export default function LocationPage() {
       }
     };
     run();
-  }, [API_URL, id]);
+    }, [API_URL, id, normalizedApiUrl]);
+
+  const refreshReviews = useCallback(async () => {
+    if (!id || !API_URL || API_URL === 'undefined') {
+      return;
+    }
+
+    try {
+      setReviewsLoading(true);
+      setReviewsError(null);
+      const res = await fetchWithTimeout(
+        `${normalizedApiUrl}/api/reviews/location/${encodeURIComponent(id)}?limit=5`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        },
+        8000
+      );
+
+      if (!res.ok) throw new Error(`Failed to load reviews (HTTP ${res.status})`);
+      const json = await res.json();
+      const payload = json?.success ? json.data : json;
+      const reviews = Array.isArray(payload?.reviews) ? payload.reviews : [];
+      setReviewsData(reviews);
+      setReviewsAverage(
+        typeof payload?.averageRating === 'number' ? payload.averageRating : null
+      );
+      setUserReview(payload?.userReview ?? null);
+    } catch (e: any) {
+      console.error(e);
+      setReviewsError(e?.message || 'Failed to load reviews.');
+    } finally {
+      setReviewsLoading(false);
+    }
+  }, [API_URL, id, normalizedApiUrl, token]);
+
+  useEffect(() => {
+    refreshReviews();
+  }, [refreshReviews]);
 
   // Background image = first of images (if any), Gallery = rest
   const allImages = normalizeImagesFromJson(data?.images ?? null);
@@ -213,8 +259,61 @@ export default function LocationPage() {
     typeof data?.rating === 'string' ? parseFloat(data.rating) : data?.rating ?? null;
   const displayRatingRaw =
     (Number.isFinite(parsedDbRating as number) ? (parsedDbRating as number) : null) ??
-    averageRating(data?.reviews);
+    reviewsAverage;
   const displayRating = fmtNumber(displayRatingRaw, { digits: 1 });
+
+  const handleSubmitReview = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!id || !API_URL || API_URL === 'undefined') {
+      setSubmitReviewError('Backend URL is not configured.');
+      return;
+    }
+    if (!token) {
+      setSubmitReviewError('You must be logged in to leave a review.');
+      return;
+    }
+    if (!newReviewContent.trim()) {
+      setSubmitReviewError('Please enter a review before submitting.');
+      return;
+    }
+
+    try {
+      setSubmittingReview(true);
+      setSubmitReviewError(null);
+      setSubmitReviewSuccess(null);
+      const res = await fetchWithTimeout(
+        `${normalizedApiUrl}/api/reviews`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            rating: newReviewRating,
+            content: newReviewContent.trim(),
+            locationId: id,
+          }),
+        },
+        8000
+      );
+
+      const json = await res.json();
+      if (!res.ok || json?.success === false) {
+        throw new Error(json?.message || 'Failed to submit review.');
+      }
+
+      setNewReviewContent('');
+      setNewReviewRating(5);
+      setSubmitReviewSuccess('Review submitted!');
+      await refreshReviews();
+    } catch (e: any) {
+      console.error(e);
+      setSubmitReviewError(e?.message || 'Failed to submit review.');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   return (
     <main className="text-neutral-100">
@@ -430,27 +529,114 @@ export default function LocationPage() {
           {/* Reviews (full-width) */}
           <section className="pb-12">
             <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 backdrop-blur p-6">
-              <h3 className="font-semibold mb-3">Reviews</h3>
-              {data?.reviews && data.reviews.length > 0 ? (
-                <ul className="space-y-3">
-                  {data.reviews.map((r, i) => (
-                    <li key={r.id ?? i} className="rounded-xl border border-neutral-800 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h3 className="font-semibold">Reviews</h3>
+                <div className="text-sm text-neutral-300">
+                  Average rating:{' '}
+                  {reviewsAverage ? `${fmtNumber(reviewsAverage, { digits: 1 })} / 5` : '—'}
+                </div>
+              </div>
+
+              {reviewsLoading ? (
+                <p className="text-neutral-400">Loading reviews…</p>
+              ) : reviewsError ? (
+                <p className="text-red-400">{reviewsError}</p>
+              ) : reviewsData.length > 0 ? (
+                <ul className="mt-4 space-y-3">
+                  {reviewsData.map((review) => (
+                    <li key={review.id} className="rounded-xl border border-neutral-800 p-4">
                       <div className="flex items-center justify-between">
-                        <div className="font-medium">{r.author || 'Anonymous'}</div>
-                        <div className="text-sm text-neutral-400">{r.rating ?? '—'}</div>
+                        <div className="font-medium">{reviewerDisplayName(review)}</div>
+                        <div className="text-sm text-neutral-400">{review.rating} / 5</div>
                       </div>
-                      {r.comment && <p className="mt-2 text-neutral-300">{r.comment}</p>}
-                      {r.createdAt && (
-                        <div className="mt-1 text-xs text-neutral-500">
-                          {new Date(r.createdAt).toLocaleDateString()}
-                        </div>
+                      {review.content && (
+                        <p className="mt-2 text-neutral-300">{review.content}</p>
                       )}
+                      <div className="mt-1 text-xs text-neutral-500">
+                        {new Date(review.createdAt).toLocaleDateString()}
+                      </div>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-neutral-500">—</p>
+                <p className="mt-4 text-neutral-500">No reviews yet.</p>
               )}
+
+              <div className="mt-6 border-t border-neutral-800 pt-6">
+                {isAuthenticated ? (
+                  userReview ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-emerald-400">
+                        You have already reviewed this location.
+                      </p>
+                      <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/60">
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium">Your review</div>
+                          <div className="text-sm text-neutral-400">{userReview.rating} / 5</div>
+                        </div>
+                        {userReview.content && (
+                          <p className="mt-2 text-neutral-300">{userReview.content}</p>
+                        )}
+                        <div className="mt-1 text-xs text-neutral-500">
+                          {new Date(userReview.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSubmitReview} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-neutral-200" htmlFor="rating">
+                          Rating
+                        </label>
+                        <select
+                          id="rating"
+                          className="mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-900/70 p-2"
+                          value={newReviewRating}
+                          onChange={(e) => setNewReviewRating(Number(e.target.value))}
+                          disabled={submittingReview}
+                        >
+                          {[5, 4, 3, 2, 1].map((value) => (
+                            <option key={value} value={value}>
+                              {value} star{value === 1 ? '' : 's'}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-neutral-200" htmlFor="review">
+                          Review
+                        </label>
+                        <textarea
+                          id="review"
+                          className="mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-900/70 p-3"
+                          rows={4}
+                          value={newReviewContent}
+                          onChange={(e) => setNewReviewContent(e.target.value)}
+                          placeholder="Share your experience…"
+                          disabled={submittingReview}
+                        />
+                      </div>
+                      {submitReviewError && (
+                        <p className="text-sm text-red-400">{submitReviewError}</p>
+                      )}
+                      {submitReviewSuccess && (
+                        <p className="text-sm text-emerald-400">{submitReviewSuccess}</p>
+                      )}
+                      <button
+                        type="submit"
+                        className="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-neutral-900 transition hover:bg-emerald-400 disabled:opacity-50"
+                        disabled={submittingReview}
+                      >
+                        {submittingReview ? 'Submitting…' : 'Submit review'}
+                      </button>
+                    </form>
+                  )
+                ) : (
+                  <p className="text-sm text-neutral-400">
+                    Log in to share your experience at this location.
+                  </p>
+                )}
+              </div>
             </div>
           </section>
 
