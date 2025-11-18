@@ -12,10 +12,79 @@ import Backplate from '@/app/components/Backplate';
 type Location = {
   id: string;
   name: string;
-  blurb?: string;
-  price?: string;
-  rating?: number;
-  img?: string;
+  description?: string | null;
+  costPerNight?: number | string | null;
+  rating?: number | string | null;
+  images?: unknown;
+};
+
+const getFirstImage = (images: Location['images']): string => {
+  if (!images) return 'https://via.placeholder.com/300x200?text=No+Image';
+
+  const parseCandidate = (candidate: unknown): string | null => {
+    if (!candidate) return null;
+
+    if (typeof candidate === 'string') {
+      // If it looks like JSON, try parsing first.
+      if (candidate.trim().startsWith('[') || candidate.trim().startsWith('{')) {
+        try {
+          return parseCandidate(JSON.parse(candidate));
+        } catch {
+          return null;
+        }
+      }
+      return candidate;
+    }
+
+    if (Array.isArray(candidate)) {
+      for (const item of candidate) {
+        const parsed = parseCandidate(item);
+        if (parsed) return parsed;
+      }
+      return null;
+    }
+
+    if (typeof candidate === 'object') {
+      // Common CMS patterns store url/urls fields
+      const maybeUrl =
+        (candidate as { url?: string }).url ||
+        (Array.isArray((candidate as { urls?: string[] }).urls)
+          ? (candidate as { urls?: string[] }).urls?.[0]
+          : undefined);
+      if (maybeUrl) return maybeUrl;
+    }
+
+    return null;
+  };
+
+  return parseCandidate(images) ?? 'https://via.placeholder.com/300x200?text=No+Image';
+};
+
+const formatPrice = (cost: Location['costPerNight']): string => {
+  if (cost === null || cost === undefined) return '—';
+
+  const numeric = typeof cost === 'string' ? Number(cost) : cost;
+  if (typeof numeric === 'number' && !Number.isNaN(numeric)) {
+    const formatted = numeric % 1 === 0 ? numeric.toFixed(0) : numeric.toFixed(2);
+    return `$${formatted}/night`;
+  }
+
+  return `$${cost}/night`;
+};
+
+const formatRating = (rating: Location['rating']): string => {
+  if (rating === null || rating === undefined) return '—';
+  const numeric = typeof rating === 'string' ? Number(rating) : rating;
+  if (typeof numeric === 'number' && !Number.isNaN(numeric)) {
+    return numeric.toFixed(1);
+  }
+  return '—';
+};
+
+const getDescription = (description: Location['description']): string => {
+  if (!description) return 'No description available.';
+  const trimmed = description.trim();
+  return trimmed.length ? trimmed : 'No description available.';
 };
 
 export default function SearchPage() {
@@ -47,7 +116,18 @@ export default function SearchPage() {
       );
       const data = await res.json();
       if (data.success) {
-        setResults(data.data || []);
+        const normalized: Location[] = Array.isArray(data.data)
+          ? data.data.map((loc: Location) => ({
+              id: loc.id,
+              name: loc.name,
+              description: loc.description,
+              costPerNight: loc.costPerNight,
+              rating: loc.rating,
+              images: loc.images,
+            }))
+          : [];
+
+        setResults(normalized);
         setTotalPages(data.totalPages || 1);
         setPage(p);
       } else {
@@ -128,9 +208,9 @@ export default function SearchPage() {
                       aria-label={`View details for ${loc.name}`}
                     />
 
-                    <div className="h-24 w-36 flex-shrink-0 relative overflow-hidden">
+                    <div className="h-24 w-36 flex-shrink-0 relative overflow-hidden rounded-l-2xl">
                       <img
-                        src={loc.img || 'https://via.placeholder.com/150'}
+                        src={getFirstImage(loc.images)}
                         alt={loc.name}
                         className="h-full w-full object-cover"
                         loading="lazy"
@@ -141,12 +221,12 @@ export default function SearchPage() {
 
                     <div className="ml-4 mr-4 my-3 flex-1">
                       <h2 className="text-lg font-semibold">{loc.name}</h2>
-                      <p className="text-sm text-gray-300 line-clamp-2">
-                        {loc.blurb || 'No description available.'}
+                      <p className="text-sm text-gray-300 line-clamp-1">
+                        {getDescription(loc.description)}
                       </p>
                       <div className="flex items-center mt-2 space-x-4 text-sm text-gray-400">
-                        <span>⭐ {loc.rating ?? '—'}</span>
-                        <span className="text-emerald-400">{loc.price || '—'}</span>
+                        <span>⭐ {formatRating(loc.rating)}</span>
+                        <span className="text-emerald-400">{formatPrice(loc.costPerNight)}</span>
                       </div>
                     </div>
                   </article>
