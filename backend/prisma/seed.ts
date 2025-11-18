@@ -9,11 +9,20 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { PrismaClient, Prisma } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { loadEnv } from "../src/utils/loadEnv";
 
 loadEnv();
 
 const prisma = new PrismaClient();
+
+const adminSeedConfig = {
+  email: process.env["SEED_ADMIN_EMAIL"] ?? "admin@mavs.uta.edu",
+  username: process.env["SEED_ADMIN_USERNAME"] ?? "trailblazer-admin",
+  firstName: "Alex",
+  lastName: "Admin",
+  password: process.env["SEED_ADMIN_PASSWORD"] ?? "AdminPass123!",
+};
 
 type InputLoc = {
   name: string;
@@ -215,6 +224,33 @@ async function upsertLocation(input: InputLoc) {
   }
 }
 
+async function ensureAdminUser() {
+  const passwordHash = await bcrypt.hash(adminSeedConfig.password, 10);
+
+  await prisma.user.upsert({
+    where: { email: adminSeedConfig.email },
+    update: {
+      username: adminSeedConfig.username,
+      firstName: adminSeedConfig.firstName,
+      lastName: adminSeedConfig.lastName,
+      passwordHash,
+      isAdmin: true,
+    },
+    create: {
+      email: adminSeedConfig.email,
+      username: adminSeedConfig.username,
+      firstName: adminSeedConfig.firstName,
+      lastName: adminSeedConfig.lastName,
+      passwordHash,
+      isAdmin: true,
+    },
+  });
+
+  console.log(
+    `Admin user ready -> email: ${adminSeedConfig.email}, username: ${adminSeedConfig.username}`
+  );
+}
+
 async function main() {
   const fileArg = process.argv[2] || path.join(__dirname, "metadata_clean.jsonl");
   const inputPath = path.resolve(process.cwd(), fileArg);
@@ -223,6 +259,8 @@ async function main() {
     console.error(`Input file not found: ${inputPath}`);
     process.exit(1);
   }
+
+  await ensureAdminUser();
 
   console.log(`Seeding from: ${inputPath}`);
   const rl = readline.createInterface({

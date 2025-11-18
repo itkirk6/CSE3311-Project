@@ -41,6 +41,7 @@ router.post('/register', async (req, res) => {
         username: user.username,
         firstName: user.firstName,
         lastName: user.lastName,
+        isAdmin: user.isAdmin,
       },
     });
   } catch (err) {
@@ -84,6 +85,7 @@ router.post('/login', async (req, res) => {
           firstName: user.firstName,
           lastName: user.lastName,
           avatarUrl: user.avatarUrl,
+          isAdmin: user.isAdmin,
         },
         token,
       },
