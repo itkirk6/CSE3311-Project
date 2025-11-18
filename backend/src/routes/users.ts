@@ -9,7 +9,13 @@ const router = Router();
 router.get('/', optionalAuth, async (_req, res, next) => {
   try {
     const users = await prisma.user.findMany({
-      select: { id: true, email: true, username: true, createdAt: true },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        createdAt: true,
+        isAdmin: true,
+      },
     });
     res.json({ success: true, data: users });
   } catch (error) {
@@ -22,7 +28,13 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.params['id'] },
-      select: { id: true, email: true, username: true, createdAt: true },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        createdAt: true,
+        isAdmin: true,
+      },
     });
 
     if (!user) {
@@ -38,10 +50,33 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
 // Update current user (authenticated only)
 router.put('/me', authenticate, async (req: any, res, next) => {
   try {
+    const allowedFields = ['firstName', 'lastName', 'avatarUrl', 'bio', 'username'];
+    const payload: Record<string, any> = {};
+
+    for (const field of allowedFields) {
+      if (field in req.body) {
+        payload[field] = req.body[field];
+      }
+    }
+
+    if (Object.keys(payload).length === 0) {
+      return res.status(400).json({ success: false, message: 'No valid fields provided.' });
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: req.user.id },
-      data: req.body,
-      select: { id: true, email: true, username: true, createdAt: true },
+      data: payload,
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        createdAt: true,
+        firstName: true,
+        lastName: true,
+        avatarUrl: true,
+        bio: true,
+        isAdmin: true,
+      },
     });
 
     res.json({ success: true, data: updatedUser });

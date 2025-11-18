@@ -68,17 +68,34 @@ export default function AccountPage() {
                         </div>
                       </dl>
 
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                        <h3 className="text-lg font-semibold">Need to make changes?</h3>
-                        <p className="mt-2 text-sm text-neutral-300">
-                          Profile editing is coming soon. Reach out to our support team if you need immediate updates.
-                        </p>
-                        <Link
-                          href="/locations"
-                          className="mt-4 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
-                        >
-                          Explore locations
-                        </Link>
+                      <div className="space-y-5">
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                          <h3 className="text-lg font-semibold">Need to make changes?</h3>
+                          <p className="mt-2 text-sm text-neutral-300">
+                            Profile editing is coming soon. Reach out to our support team if you need immediate updates.
+                          </p>
+                          <Link
+                            href="/locations"
+                            className="mt-4 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
+                          >
+                            Explore locations
+                          </Link>
+                        </div>
+
+                        {user.isAdmin && (
+                          <div className="rounded-2xl border border-amber-200/30 bg-amber-400/10 p-5">
+                            <h3 className="text-lg font-semibold text-amber-100">Admin tools</h3>
+                            <p className="mt-2 text-sm text-amber-200/80">
+                              Access the administrative dashboard to review site activity and manage upcoming tools.
+                            </p>
+                            <Link
+                              href="/admin"
+                              className="mt-4 inline-flex items-center justify-center rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-neutral-900 transition hover:bg-amber-400"
+                            >
+                              Admin Dashboard
+                            </Link>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : (
