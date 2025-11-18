@@ -73,4 +73,6 @@ model Review {
   locationId String
   location   Location @relation(fields: [locationId], references: [id])
   user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, locationId])
 }

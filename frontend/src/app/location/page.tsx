@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
+import { useAuth } from '@/app/context/AuthContext';
 import NavBar from '@/app/components/NavBar';
 import Footer from '@/app/components/Footer';
 import PageShell from '@/app/components/PageShell';
@@ -23,6 +25,28 @@ type Review = {
   rating?: number | string | null; // <-- allow string too
   comment?: string | null;
   createdAt?: string | Date;
+};
+
+type ReviewUser = {
+  id: string;
+  username: string | null;
+  firstName: string | null;
+  lastName: string | null;
+};
+
+type ReviewListItem = {
+  id: string;
+  rating: number;
+  content: string;
+  createdAt: string;
+  user: ReviewUser | null;
+};
+
+type LocationReviewSummary = {
+  averageRating: number | null;
+  reviewCount: number;
+  reviews: ReviewListItem[];
+  userReview: ReviewListItem | null;
 };
 
 type LocationDetail = {
@@ -207,6 +231,25 @@ const averageRating = (reviews?: Review[] | null): number | null => {
   return Number.isFinite(avg) ? avg : null;
 };
 
+const getReviewerName = (review?: ReviewListItem | null) => {
+  if (!review?.user) return 'Anonymous';
+  const parts = [review.user.firstName, review.user.lastName].filter(Boolean);
+  if (parts.length > 0) {
+    return parts.join(' ').trim();
+  }
+  if (review.user.username) {
+    return review.user.username;
+  }
+  return 'Anonymous';
+};
+
+const formatReviewDate = (value?: string) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString();
+};
+
 // ---------------- Page ----------------
 export default function LocationPage() {
   const searchParams = useSearchParams();
@@ -218,12 +261,19 @@ export default function LocationPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
-  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const [reviewsSummary, setReviewsSummary] = useState<LocationReviewSummary | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, content: '' });
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewSubmitError, setReviewSubmitError] = useState<string | null>(null);
+  const [reviewSubmitSuccess, setReviewSubmitSuccess] = useState<string | null>(null);
 
-  const buildEndpoint = (locId: string) => {
-    const base = (API_URL || '').replace(/\/$/, '');
-    return `${base}/api/locations/id/${encodeURIComponent(locId)}`;
-  };
+  const { isAuthenticated, token } = useAuth();
+
+  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const backendConfigured = Boolean(API_URL && API_URL !== 'undefined');
+  const apiBase = useMemo(() => (backendConfigured && API_URL ? API_URL.replace(/\/$/, '') : ''), [API_URL, backendConfigured]);
 
   useEffect(() => {
     const run = async () => {
@@ -232,7 +282,7 @@ export default function LocationPage() {
         setLoading(false);
         return;
       }
-      if (!API_URL || API_URL === 'undefined') {
+      if (!backendConfigured || !apiBase) {
         setError('Backend URL not configured.');
         setLoading(false);
         return;
@@ -240,7 +290,7 @@ export default function LocationPage() {
 
       try {
         const res = await fetchWithTimeout(
-          buildEndpoint(id),
+          `${apiBase}/api/locations/id/${encodeURIComponent(id)}`,
           { headers: { 'Content-Type': 'application/json' } },
           8000
         );
@@ -262,7 +312,101 @@ export default function LocationPage() {
       }
     };
     run();
-  }, [API_URL, id]);
+  }, [apiBase, backendConfigured, id]);
+
+  const fetchReviews = useCallback(async () => {
+    if (!id) {
+      setReviewsSummary(null);
+      return;
+    }
+    if (!backendConfigured || !apiBase) {
+      setReviewsError('Backend URL not configured.');
+      setReviewsSummary(null);
+      return;
+    }
+
+    setReviewsLoading(true);
+    setReviewsError(null);
+    try {
+      const res = await fetchWithTimeout(
+        `${apiBase}/api/reviews/location/${encodeURIComponent(id)}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        },
+        8000
+      );
+
+      const json = await res.json();
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.message || `Failed to load reviews (HTTP ${res.status})`);
+      }
+
+      setReviewsSummary(json.data as LocationReviewSummary);
+    } catch (e: any) {
+      console.error(e);
+      setReviewsError(e?.message || 'Failed to load reviews.');
+      setReviewsSummary(null);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }, [apiBase, backendConfigured, id, token]);
+
+  useEffect(() => {
+    fetchReviews();
+  }, [fetchReviews]);
+
+  const handleReviewSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!id) return;
+    if (!backendConfigured || !apiBase) {
+      setReviewSubmitError('Backend URL not configured.');
+      return;
+    }
+    if (!token) {
+      setReviewSubmitError('You must be logged in to leave a review.');
+      return;
+    }
+
+    setSubmittingReview(true);
+    setReviewSubmitError(null);
+    setReviewSubmitSuccess(null);
+
+    try {
+      const res = await fetchWithTimeout(
+        `${apiBase}/api/reviews`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            rating: reviewForm.rating,
+            content: reviewForm.content.trim(),
+            locationId: id,
+          }),
+        },
+        8000
+      );
+
+      const json = await res.json();
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.message || `Failed to submit review (HTTP ${res.status})`);
+      }
+
+      setReviewSubmitSuccess('Review submitted successfully!');
+      setReviewForm({ rating: 5, content: '' });
+      await fetchReviews();
+    } catch (e: any) {
+      console.error(e);
+      setReviewSubmitError(e?.message || 'Failed to submit review.');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   // Background image = first of images (if any), Gallery = rest
   const allImages = normalizeImagesFromJson(data?.images ?? null);
@@ -272,10 +416,13 @@ export default function LocationPage() {
   // ----- Robust rating for display -----
   const parsedDbRating =
     typeof data?.rating === 'string' ? parseFloat(data.rating) : data?.rating ?? null;
+  const reviewAverageFallback =
+    reviewsSummary?.averageRating ?? averageRating(data?.reviews);
   const displayRatingRaw =
     (Number.isFinite(parsedDbRating as number) ? (parsedDbRating as number) : null) ??
-    averageRating(data?.reviews);
+    reviewAverageFallback;
   const displayRating = fmtNumber(displayRatingRaw, { digits: 1 });
+  const userHasReview = Boolean(reviewsSummary?.userReview);
 
   return (
     <main className="text-neutral-100">
@@ -485,29 +632,120 @@ export default function LocationPage() {
           </section>
 
           {/* Reviews (full-width) */}
+  
           <section className="pb-12">
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 backdrop-blur p-6">
-              <h3 className="font-semibold mb-3">Reviews</h3>
-              {data?.reviews && data.reviews.length > 0 ? (
-                <ul className="space-y-3">
-                  {data.reviews.map((r, i) => (
-                    <li key={r.id ?? i} className="rounded-xl border border-neutral-800 p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="font-medium">{r.author || 'Anonymous'}</div>
-                        <div className="text-sm text-neutral-400">{r.rating ?? '—'}</div>
-                      </div>
-                      {r.comment && <p className="mt-2 text-neutral-300">{r.comment}</p>}
-                      {r.createdAt && (
-                        <div className="mt-1 text-xs text-neutral-500">
-                          {new Date(r.createdAt).toLocaleDateString()}
+            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 backdrop-blur p-6 space-y-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="font-semibold">Reviews</h3>
+                  <p className="text-sm text-neutral-400">What other explorers are saying</p>
+                </div>
+                <div className="rounded-xl border border-neutral-800 bg-neutral-950/40 px-5 py-3 text-center">
+                  <div className="text-xs uppercase tracking-wide text-neutral-400">Average Rating</div>
+                  <div className="text-3xl font-semibold text-neutral-50">
+                    {reviewsSummary
+                      ? `${fmtNumber(reviewsSummary.averageRating ?? null, { digits: 1 })} / 5`
+                      : '—'}
+                  </div>
+                  <div className="text-xs text-neutral-400">
+                    {reviewsSummary?.reviewCount
+                      ? `${reviewsSummary.reviewCount} review${reviewsSummary.reviewCount === 1 ? '' : 's'}`
+                      : 'No reviews yet'}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <h4 className="text-lg font-semibold">Latest reviews</h4>
+                  <span className="text-xs uppercase tracking-wide text-neutral-500">
+                    Showing up to 5 most recent reviews
+                  </span>
+                </div>
+                {reviewsLoading ? (
+                  <p className="text-neutral-400">Loading reviews…</p>
+                ) : reviewsError ? (
+                  <p className="text-red-400">{reviewsError}</p>
+                ) : reviewsSummary && reviewsSummary.reviews.length > 0 ? (
+                  <ul className="space-y-3">
+                    {reviewsSummary.reviews.map((r) => (
+                      <li key={r.id} className="rounded-xl border border-neutral-800 bg-neutral-950/40 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="font-medium text-neutral-100">{getReviewerName(r)}</div>
+                          <div className="text-sm text-yellow-300">
+                            {fmtNumber(r.rating, { digits: 1 })}/5 ★
+                          </div>
                         </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-neutral-500">—</p>
-              )}
+                        <p className="mt-2 text-neutral-300 whitespace-pre-line">{r.content}</p>
+                        <div className="mt-2 text-xs text-neutral-500">{formatReviewDate(r.createdAt)}</div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-neutral-500">No reviews yet. Be the first to share your experience.</p>
+                )}
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold mb-3">Leave a review</h4>
+                {reviewSubmitSuccess && (
+                  <p className="text-sm text-emerald-400 mb-2">{reviewSubmitSuccess}</p>
+                )}
+                {reviewSubmitError && (
+                  <p className="text-sm text-red-400 mb-2">{reviewSubmitError}</p>
+                )}
+                {!isAuthenticated ? (
+                  <p className="text-sm text-neutral-400">
+                    <Link href="/auth/login" className="text-emerald-400 underline">
+                      Log in
+                    </Link>{' '}
+                    to leave a review.
+                  </p>
+                ) : userHasReview ? (
+                  <div className="rounded-xl border border-neutral-800 bg-neutral-950/40 p-4 text-neutral-300">
+                    You have already reviewed this location. Thank you for sharing your experience!
+                  </div>
+                ) : (
+                  <form className="space-y-4" onSubmit={handleReviewSubmit}>
+                    <label className="block text-sm font-medium text-neutral-200">
+                      Rating
+                      <select
+                        className="mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950/60 p-2 text-neutral-100"
+                        value={String(reviewForm.rating)}
+                        onChange={(e) =>
+                          setReviewForm((prev) => ({ ...prev, rating: Number(e.target.value) || 1 }))
+                        }
+                        disabled={submittingReview}
+                        required
+                      >
+                        {[1, 2, 3, 4, 5].map((value) => (
+                          <option key={value} value={value}>{`${value} star${value === 1 ? '' : 's'}`}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block text-sm font-medium text-neutral-200">
+                      Comments
+                      <textarea
+                        className="mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950/60 p-3 text-neutral-100"
+                        rows={4}
+                        maxLength={800}
+                        value={reviewForm.content}
+                        onChange={(e) => setReviewForm((prev) => ({ ...prev, content: e.target.value }))}
+                        placeholder="Share tips, highlights, or anything future visitors should know."
+                        disabled={submittingReview}
+                        required
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-emerald-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
+                      disabled={submittingReview}
+                    >
+                      {submittingReview ? 'Submitting…' : 'Submit review'}
+                    </button>
+                  </form>
+                )}
+              </div>
             </div>
           </section>
 
