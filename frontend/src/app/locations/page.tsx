@@ -9,6 +9,10 @@ import Footer from '@/app/components/Footer';
 import PageShell from '@/app/components/PageShell';
 import MapComponent from '@/app/components/MapComponent';
 import Backplate from '@/app/components/Backplate';
+import { useAuth } from '@/app/context/AuthContext';
+
+type LocationImageEntry = string | { url?: string | null } | null;
+type LocationImages = LocationImageEntry[] | LocationImageEntry | null;
 
 type Location = {
   id: string;
@@ -18,12 +22,13 @@ type Location = {
   description?: string;
   price?: string;
   rating?: number;
-  images?: any; // JSON or array
+  images?: LocationImages;
 };
 
 export default function LocationsPage() {
   const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const { isAuthenticated } = useAuth();
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,14 +55,15 @@ export default function LocationsPage() {
         const json = await res.json();
         if (json?.success) setLocations(json.data || []);
         else throw new Error('API returned unsuccessful response');
-      } catch (e: any) {
-        console.error(e);
-        setError(e?.message || 'Failed to load locations.');
-        setLocations([]);
-      } finally {
-        setLoading(false);
-      }
-    })();
+        } catch (e) {
+          console.error(e);
+          const message = e instanceof Error ? e.message : 'Failed to load locations.';
+          setError(message);
+          setLocations([]);
+        } finally {
+          setLoading(false);
+        }
+      })();
   }, [API_URL]);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -67,14 +73,27 @@ export default function LocationsPage() {
     router.push(`/search?q=${encodeURIComponent(q)}`);
   };
 
-  const getFirstImage = (images: any): string => {
+  const extractImageUrl = (entry: LocationImageEntry | undefined | null): string | null => {
+    if (!entry) return null;
+    if (typeof entry === 'string' && entry.trim().length > 0) {
+      return entry;
+    }
+    if (typeof entry === 'object' && typeof entry.url === 'string' && entry.url.trim().length > 0) {
+      return entry.url;
+    }
+    return null;
+  };
+
+  const getFirstImage = (images: Location['images']): string => {
     if (!images) return '/placeholder.jpg';
     if (Array.isArray(images)) {
-      if (typeof images[0] === 'string') return images[0];
-      if (images[0]?.url) return images[0].url;
+      for (const item of images) {
+        const url = extractImageUrl(item);
+        if (url) return url;
+      }
+      return '/placeholder.jpg';
     }
-    if (typeof images === 'object' && images.url) return images.url;
-    return '/placeholder.jpg';
+    return extractImageUrl(images) ?? '/placeholder.jpg';
   };
 
   return (
@@ -113,6 +132,17 @@ export default function LocationsPage() {
                     Search
                   </button>
                 </form>
+
+                {isAuthenticated && (
+                  <div className="mt-6 flex justify-center sm:justify-end">
+                    <Link
+                      href="/locations/add"
+                      className="inline-flex items-center justify-center rounded-2xl border border-emerald-500/50 bg-emerald-600/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500/20"
+                    >
+                      Add location
+                    </Link>
+                  </div>
+                )}
               </Backplate>
             </div>
           </section>
