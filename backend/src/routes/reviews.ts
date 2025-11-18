@@ -5,6 +5,13 @@ import { authenticate, optionalAuth } from '@/middleware/auth';
 const prisma = new PrismaClient();
 const router = Router();
 
+const reviewUserSelect = {
+  id: true,
+  username: true,
+  firstName: true,
+  lastName: true,
+};
+
 // Public routes
 router.get('/', optionalAuth, async (_req, res, next) => {
   try {
@@ -37,19 +44,104 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
   }
 });
 
+router.get('/location/:locationId', optionalAuth, async (req: any, res, next) => {
+  try {
+    const { locationId } = req.params;
+
+    const [recentReviews, summary] = await Promise.all([
+      prisma.review.findMany({
+        where: { locationId },
+        include: { user: { select: reviewUserSelect } },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      prisma.review.aggregate({
+        where: { locationId },
+        _avg: { rating: true },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const userReview = req.user
+      ? await prisma.review.findUnique({
+          where: {
+            userId_locationId: { userId: req.user.id, locationId },
+          },
+          include: { user: { select: reviewUserSelect } },
+        })
+      : null;
+
+    res.json({
+      success: true,
+      data: {
+        averageRating: summary._avg.rating ?? null,
+        reviewCount: summary._count?._all ?? 0,
+        reviews: recentReviews,
+        userReview,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Protected routes
 router.post('/', authenticate, async (req: any, res, next) => {
   try {
-    const { content, rating, locationId } = req.body;
+    const { content, rating, locationId } = req.body as {
+      content?: string;
+      rating?: number | string;
+      locationId?: string;
+    };
+
+    if (!locationId) {
+      res.status(400).json({ success: false, message: 'locationId is required' });
+      return;
+    }
+
+    const parsedRating = Number(rating);
+    if (!Number.isFinite(parsedRating)) {
+      res.status(400).json({ success: false, message: 'Rating must be a number' });
+      return;
+    }
+    const normalizedRating = Math.round(parsedRating);
+    if (normalizedRating < 1 || normalizedRating > 5) {
+      res
+        .status(400)
+        .json({ success: false, message: 'Rating must be between 1 and 5 stars' });
+      return;
+    }
+
+    const trimmedContent = typeof content === 'string' ? content.trim() : '';
+    if (!trimmedContent) {
+      res.status(400).json({ success: false, message: 'Review content is required' });
+      return;
+    }
+
+    const existingReview = await prisma.review.findUnique({
+      where: {
+        userId_locationId: {
+          userId: req.user.id,
+          locationId,
+        },
+      },
+    });
+
+    if (existingReview) {
+      res
+        .status(409)
+        .json({ success: false, message: 'You have already reviewed this location' });
+      return;
+    }
 
     const newReview = await prisma.review.create({
       data: {
-        content,
-        rating,
+        content: trimmedContent,
+        rating: normalizedRating,
         user: { connect: { id: req.user.id } },
-        ...(locationId ? { location: { connect: { id: locationId } } } : {}),
+        location: { connect: { id: locationId } },
       },
-      include: { user: true, location: true },
+      include: { user: { select: reviewUserSelect } },
     });
 
     res.status(201).json({ success: true, data: newReview });
