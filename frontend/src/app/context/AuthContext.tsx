@@ -16,6 +16,7 @@ type AuthUser = {
   firstName: string | null;
   lastName: string | null;
   avatarUrl: string | null;
+  isAdmin: boolean;
 };
 
 type AuthState = {
@@ -59,6 +60,7 @@ const sanitizeUser = (user: unknown): AuthUser => {
       firstName: null,
       lastName: null,
       avatarUrl: null,
+      isAdmin: false,
     };
   }
 
@@ -76,6 +78,7 @@ const sanitizeUser = (user: unknown): AuthUser => {
     firstName: toNullableString(record.firstName),
     lastName: toNullableString(record.lastName),
     avatarUrl: toNullableString(record.avatarUrl),
+    isAdmin: Boolean(record.isAdmin),
   };
 };
 
