@@ -60,7 +60,8 @@ router.put('/me', authenticate, async (req: any, res, next) => {
     }
 
     if (Object.keys(payload).length === 0) {
-      return res.status(400).json({ success: false, message: 'No valid fields provided.' });
+      res.status(400).json({ success: false, message: 'No valid fields provided.' });
+      return;
     }
 
     const updatedUser = await prisma.user.update({
