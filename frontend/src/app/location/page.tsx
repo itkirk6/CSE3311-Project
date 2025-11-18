@@ -220,6 +220,17 @@ async function fetchWithTimeout(url: string, opts: RequestInit = {}, ms = 8000) 
   }
 }
 
+const safeParseJson = async (res: Response) => {
+  const text = await res.text();
+  if (!text.trim()) return null;
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('Failed to parse JSON response', error);
+    throw new Error('Invalid JSON response');
+  }
+};
+
 // If DB rating is missing, fall back to average of review ratings
 const averageRating = (reviews?: Review[] | null): number | null => {
   if (!reviews || reviews.length === 0) return null;
@@ -339,7 +350,17 @@ export default function LocationPage() {
         8000
       );
 
-      const json = await res.json();
+      const json = await safeParseJson(res);
+      if (!json) {
+        setReviewsSummary({
+          averageRating: null,
+          reviewCount: 0,
+          reviews: [],
+          userReview: null,
+        });
+        return;
+      }
+
       if (!res.ok || !json?.success) {
         throw new Error(json?.message || `Failed to load reviews (HTTP ${res.status})`);
       }
@@ -682,7 +703,7 @@ export default function LocationPage() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-neutral-500">No reviews yet. Be the first to share your experience.</p>
+                  <p className="text-neutral-500">No Reviews Yet</p>
                 )}
               </div>
 
@@ -779,3 +800,4 @@ function Info({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
